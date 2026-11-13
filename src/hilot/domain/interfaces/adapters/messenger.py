@@ -12,6 +12,10 @@ class ProgressIndicator(Protocol):
     async def hide_progress(self, source: SourceMessage) -> None: ...
 
 
+class MessageReader(Protocol):
+    async def message_exists(self, source: SourceMessage) -> bool: ...
+
+
 class UploadLimitReader(Protocol):
     def get_upload_limit(self) -> int: ...
 

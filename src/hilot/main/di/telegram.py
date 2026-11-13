@@ -6,6 +6,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageReader,
     ProgressIndicator,
     TextSender,
     UploadLimitReader,
@@ -54,6 +55,7 @@ class TelegramProvider(Provider):
         KurigramMessenger,
         provides=AnyOf[
             ProgressIndicator,
+            MessageReader,
             UploadLimitReader,
             MediaUploader,
             MediaSender,

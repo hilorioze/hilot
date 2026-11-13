@@ -55,6 +55,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageReader,
     ProgressIndicator,
     TextSender,
     UploadLimitReader,
@@ -64,7 +65,13 @@ from hilot.domain.value_objects.message import ChatId, Link, MessageId, SourceMe
 
 
 class KurigramMessenger(
-    ProgressIndicator, UploadLimitReader, MediaUploader, MediaSender, MediaRefresher, TextSender
+    ProgressIndicator,
+    MessageReader,
+    UploadLimitReader,
+    MediaUploader,
+    MediaSender,
+    MediaRefresher,
+    TextSender,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
 
@@ -107,6 +114,15 @@ class KurigramMessenger(
     async def hide_progress(self, source: SourceMessage) -> None:
         with suppress(MessageNotModified):
             await self._client.send_reaction(chat_id=source.chat_id, message_id=source.message_id)
+
+    @override
+    async def message_exists(self, source: SourceMessage) -> bool:
+        try:
+            await self._get_message(chat_id=source.chat_id, message_id=source.message_id)
+        except MessageGoneError:
+            return False
+
+        return True
 
     @override
     def get_upload_limit(self) -> int:
@@ -177,15 +193,9 @@ class KurigramMessenger(
 
     @override
     async def refresh_media(self, cached_file: CachedFile) -> FileId:
-        try:
-            message: types.Message | None = await self._client.get_messages(
-                chat_id=cached_file.chat_id, message_ids=cached_file.message_id, replies=0
-            )
-        except ChannelPrivate as error:
-            raise MessageGoneError from error
-
-        if message is None or message.empty:
-            raise MessageGoneError
+        message: types.Message = await self._get_message(
+            chat_id=cached_file.chat_id, message_id=cached_file.message_id
+        )
 
         # the media kinds are named like the message attributes holding them
         return FileId(getattr(message, cached_file.kind.value).file_id)
@@ -228,6 +238,19 @@ class KurigramMessenger(
                 return await self._client.save_file(path, progress=track_progress)
             finally:
                 progress_task.cancel()
+
+    async def _get_message(self, *, chat_id: ChatId, message_id: MessageId) -> types.Message:
+        try:
+            message: types.Message | None = await self._client.get_messages(
+                chat_id=chat_id, message_ids=message_id, replies=0
+            )
+        except ChannelPrivate as error:
+            raise MessageGoneError from error
+
+        if message is None or message.empty:
+            raise MessageGoneError
+
+        return message
 
     async def _resolve_peer(self, chat_id: ChatId) -> InputPeer:
         # kurigram returns `None` only for a `None` peer id

@@ -19,6 +19,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageReader,
     ProgressIndicator,
     TextSender,
 )
@@ -47,6 +48,7 @@ class DeliverMedia:
         self,
         *,
         progress_indicator: ProgressIndicator,
+        message_reader: MessageReader,
         media_uploader: MediaUploader,
         media_sender: MediaSender,
         media_refresher: MediaRefresher,
@@ -61,6 +63,7 @@ class DeliverMedia:
         uow: UnitOfWork,
     ) -> None:
         self._progress_indicator: ProgressIndicator = progress_indicator
+        self._message_reader: MessageReader = message_reader
         self._media_uploader: MediaUploader = media_uploader
         self._media_sender: MediaSender = media_sender
         self._media_refresher: MediaRefresher = media_refresher
@@ -76,6 +79,10 @@ class DeliverMedia:
 
     async def __call__(self, data: DeliverMediaDTO) -> None:
         source: SourceMessage = data.result.request.source
+
+        # a message sent by mistake and deleted right away gets no reply
+        if not await self._message_reader.message_exists(source):
+            return
 
         # the reaction stands for the download, the upload shows its own progress
         if source.shows_progress():
@@ -108,6 +115,10 @@ class DeliverMedia:
 
             if delivered_part in delivered_parts:
                 continue
+
+            # the message can be deleted while the earlier parts upload
+            if part and not await self._message_reader.message_exists(source):
+                return
 
             cached_files: list[CachedFile] = []
             stored_files: list[StoredFile] = []
