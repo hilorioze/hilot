@@ -87,7 +87,8 @@ class YtDlpMediaExtractor(MediaExtractor):
             infos: list[dict[str, Any]] = self._list_infos(info)
 
             # yt-dlp gets a tiktok photo post only as its track, so an extraction without a video can be left to another extractor
-            if self._video_required and all(info["vcodec"] == "none" for info in infos):
+            # a format of an unknown codec, like facebook's progressive ones, has no `vcodec` at all
+            if self._video_required and all(info.get("vcodec") == "none" for info in infos):
                 raise NoMediaError
 
             yield _YtDlpExtraction(ydl=ydl, infos=infos, size_limit=size_limit)
