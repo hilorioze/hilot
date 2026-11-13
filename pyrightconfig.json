@@ -1,0 +1,5 @@
+{
+  // the venv that devenv's uv creates
+  "venvPath": ".devenv/state",
+  "venv": "venv"
+}

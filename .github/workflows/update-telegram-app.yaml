@@ -1,0 +1,122 @@
+on:
+  push:
+    branches:
+      - main
+
+    paths:
+      - .github/workflows/update-telegram-app.yaml
+
+      # workflow uses `--inputs-from .`, so changes to it may affect the result
+      - flake.lock
+
+      # a kurigram update may bring the layer of a newer app
+      - uv.lock
+
+  schedule:
+    # run weekly on mondays at 00:00 utc
+    - cron: "0 0 * * 1"
+
+  workflow_dispatch:
+
+jobs:
+  update-telegram-app:
+    concurrency:
+      # one workflow run at a time; latest completes last
+      group: ${{ github.workflow }}
+
+      cancel-in-progress: false
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: cachix/install-nix-action@75c75c31ebece974e48ebc36b4ad125bd97bd97b # v31.11.3
+        with:
+          extra_nix_config: |
+            fsync-metadata = false # performance over durability in ci; store is transient
+
+            fallback = true # build from source when a substituter fails mid-download instead of failing the job
+
+      - id: update-telegram-app
+        # the default bash of github actions with the apk tools
+        shell: nix shell --inputs-from . nixpkgs#aapt nixpkgs#apksigner nixpkgs#jadx --command bash --noprofile --norc -eo pipefail {0}
+        run: |
+          apk=$RUNNER_TEMP/Telegram.apk
+
+          # the apk of https://telegram.org/android
+          curl --fail --silent --show-error --location --output $apk https://telegram.org/dl/android/apk
+
+          read -r package_id version_code version_name <<<"$(
+            aapt2 dump badging $apk | sed --quiet "1s/^package: name='\([^']*\)' versionCode='\([^']*\)' versionName='\([^']*\)'.*/\1 \2 \3/p"
+          )"
+          certificate_fingerprint=$(apksigner verify --print-certs $apk | sed --quiet 's/^Signer #1 certificate SHA-256 digest: //p' | tr a-f A-F)
+
+          # `ConnectionsManager` passes the layer it talks to `init`, r8 keeps their names for the jni methods
+          # `--no-replace-consts` leaves the layer a number, not a field of the same value like `NotificationCenter.channelStarsUpdated` in 12.8.3; 3 means some method of another class failed to decompile
+          jadx --quiet --no-res --no-replace-consts --single-class org.telegram.tgnet.ConnectionsManager --output-dir $RUNNER_TEMP/jadx $apk || (( $? == 3 ))
+          app_layer=$(sed --quiet --regexp-extended 's/^\s+init\([^,]+, ([^,]+), .*/\1/p' $RUNNER_TEMP/jadx/sources/org/telegram/tgnet/ConnectionsManager.java | sort --unique)
+
+          if [[ ! $app_layer =~ ^[0-9]+$ ]]; then
+            printf '::error::no single layer in the `init` calls of telegram %s: %s\n' "$version_name" "$app_layer"
+
+            exit 1
+          fi
+
+          kurigram_wheel=$RUNNER_TEMP/kurigram.whl
+
+          curl --fail --silent --show-error --location --output $kurigram_wheel "$(
+            python3 -c 'import tomllib; print(next(package for package in tomllib.load(open("uv.lock", "rb"))["package"] if package["name"] == "kurigram")["wheels"][0]["url"])'
+          )"
+          kurigram_layer=$(python3 -c 'import sys, zipfile; print(zipfile.ZipFile(sys.argv[1]).read("pyrogram/raw/all.py").decode())' $kurigram_wheel | sed --quiet 's/^layer = //p')
+
+          # each fails with its name when the output it comes from changes
+          : ${package_id:?} ${version_code:?} ${version_name:?} ${certificate_fingerprint:?} ${kurigram_layer:?}
+
+          # the version claims the layer of its app, so it waits for a kurigram with the same one
+          if (( app_layer != kurigram_layer )); then
+            printf '::notice::telegram %s talks layer %d, kurigram layer %d\n' "$version_name" $app_layer $kurigram_layer
+
+            exit 0
+          fi
+
+          # the version telegram for android sends, see https://github.com/DrKLO/Telegram/blob/7be672ead283d022812d75c729d3a04dd4c2a2c6/TMessagesProj/src/main/java/org/telegram/tgnet/ConnectionsManager.java#L233
+          app_version="$version_name ($version_code)"
+
+          sed --in-place \
+            --expression "s/^app_version = \".*\"$/app_version = \"$app_version\"/" \
+            --expression "s/^package_id = \".*\"$/package_id = \"$package_id\"/" \
+            --expression "s/^certificate_fingerprint = \".*\"$/certificate_fingerprint = \"$certificate_fingerprint\"/" \
+            hilot.toml
+
+          # `sed` replaces nothing in a line of another format
+          for line in "app_version = \"$app_version\"" "package_id = \"$package_id\"" "certificate_fingerprint = \"$certificate_fingerprint\""; do
+            grep --quiet --line-regexp --fixed-strings "$line" hilot.toml || { printf '::error::no `%s` in hilot.toml\n' "$line"; exit 1; }
+          done
+
+          body=$RUNNER_TEMP/telegram-app-body.md
+
+          printf '```diff\n%s\n```\n' "$(git diff --unified=0 hilot.toml | tail --lines +5)" >$body
+
+          printf 'app-version=%s\n' "$app_version" >>$GITHUB_OUTPUT
+          printf 'body-path=%s\n' $body >>$GITHUB_OUTPUT
+
+      - if: steps.update-telegram-app.outputs.app-version
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ secrets.TELEGRAM_APP_UPDATE_PAT }}
+
+          branch: automation/update-telegram-app
+          delete-branch: true
+
+          assignees: hilorioze
+          labels: |
+            dependencies
+            automated
+
+          commit-message: "chore(deps/telegram): update to ${{ steps.update-telegram-app.outputs.app-version }}"
+          title: "chore(deps/telegram): update to ${{ steps.update-telegram-app.outputs.app-version }}"
+
+          author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com> # defaults to the user who triggered the run
+
+          body-path: ${{ steps.update-telegram-app.outputs.body-path }}

@@ -1,0 +1,51 @@
+[project]
+name = "hilot"
+version = "0.1.0"
+
+authors = [{name = "hilorioze", email = "hilorioze@hilorioze.com"}]
+license = "MIT"
+
+description = "Multi-functional Telegram userbot"
+readme = "README.md"
+
+requires-python = ">=3.14"
+dependencies = [
+    # keep-sorted start
+    "adaptix>=3.0.0b12",
+    "aiobotocore>=3.10.0",
+    "aiohttp>=3.14.5",
+    "alembic>=1.20.1",
+    "cryptography>=50.0.2",
+    "dature[toml]>=1.6.4",
+    "dishka>=1.10.1",
+    "gallery-dl>=1.32.19",
+    "kurigram[fast,qrcode]>=2.2.27",
+    "prometheus-client>=0.26.0",
+    "secretspec>=0.21.1",
+    "sqlalchemy[postgresql-asyncpg]>=2.1.8",
+    "taskiq-nats>=0.7.0",
+    "taskiq>=0.13.0",
+    "yt-dlp[curl-cffi,default]>=2026.10.26",
+    # keep-sorted end
+]
+
+[project.scripts]
+# keep-sorted start
+hilot-bot = "hilot.main.bot:main"
+hilot-cookies = "hilot.main.cookies:main"
+hilot-downloader = "hilot.main.downloader:main"
+hilot-login = "hilot.main.login:main"
+hilot-migrate = "hilot.main.migrate:main"
+hilot-transcoder = "hilot.main.transcoder:main"
+# keep-sorted end
+
+[dependency-groups]
+dev = ["types-aiobotocore[s3]>=3.10.0"]
+
+# uv locks no build systems, so uv2nix needs them for the sdists it builds: pyaes has no wheel
+[tool.uv.extra-build-dependencies]
+pyaes = ["setuptools"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

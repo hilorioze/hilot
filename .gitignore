@@ -1,0 +1,14 @@
+# build artifacts
+/result
+/result-*
+/dist/
+
+# caches
+.ruff_cache/
+__pycache__/
+
+# development environment (auto-generated)
+/.devenv/
+/.direnv/
+/.pre-commit-config.yaml
+/.venv/

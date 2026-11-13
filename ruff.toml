@@ -1,0 +1,15 @@
+line-length = 99
+
+[lint]
+select = ["ALL"]
+
+ignore = [
+    # keep-sorted start
+    "COM812",  # missing trailing comma; conflicts with the formatter
+    "CPY",     # copyright notice; the license is in `LICENSE`
+    "D",       # docstrings; not used
+    "E501",    # line too long; long strings are intentional
+    "PLR0913", # too many arguments; constructors take every port they use
+    "TC",      # imports used only in annotations; python 3.14 evaluates annotations lazily
+    # keep-sorted end
+]

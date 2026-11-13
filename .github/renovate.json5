@@ -1,0 +1,95 @@
+{
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+
+  enabledManagers: [
+    'github-actions',
+    'nix',
+    'pep621',
+  ],
+
+  // nix manager is in beta and off by default
+  nix: {
+    enabled: true,
+
+    // inputs without a `rev` in `flake.nix` are only refreshed by lock file maintenance
+    lockFileMaintenance: {
+      enabled: true,
+    },
+  },
+
+  // run weekly on mondays from 00:00 utc; the mend app runs jobs every 4 hours, so a shorter window can be skipped
+  schedule: [
+    '* 0-3 * * 1',
+  ],
+
+  assignees: [
+    'hilorioze',
+  ],
+
+  semanticCommits: 'enabled',
+  semanticCommitType: 'chore',
+
+  packageRules: [
+    {
+      matchManagers: [
+        'github-actions',
+      ],
+
+      groupName: 'github-actions',
+
+      semanticCommitScope: 'deps/github-actions',
+
+      labels: [
+        'dependencies',
+        'github_actions',
+        'automated',
+      ],
+    },
+
+    {
+      matchManagers: [
+        'nix',
+      ],
+
+      semanticCommitScope: 'deps/nix',
+
+      labels: [
+        'dependencies',
+        'nix',
+        'flake',
+        'automated',
+      ],
+    },
+
+    {
+      matchManagers: [
+        'pep621',
+      ],
+
+      groupName: 'uv',
+
+      semanticCommitScope: 'deps/uv',
+
+      labels: [
+        'dependencies',
+        'python',
+        'uv',
+        'automated',
+      ],
+    },
+
+    {
+      matchManagers: [
+        'pep621',
+      ],
+
+      matchDepTypes: [
+        'dependency-groups',
+        'project.dependencies',
+      ],
+
+      // raise the lower bounds to the new versions; the default `replace` drops every update a `>=` range already allows
+      rangeStrategy: 'bump',
+    },
+  ],
+}

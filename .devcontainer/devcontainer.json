@@ -1,0 +1,24 @@
+{
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "EditorConfig.EditorConfig",
+        "charliermarsh.ruff",
+        "jnoortheen.nix-ide",
+        "mkhl.direnv",
+        "ms-python.python",
+        "tombi-toml.tombi"
+      ]
+    },
+    "zed": {
+      "extensions": []
+    }
+  },
+  "image": "ghcr.io/cachix/devenv/devcontainer:latest",
+  "mounts": [
+    "source=devcontainer-nix,target=/nix,type=volume"
+  ],
+  "onCreateCommand": "sudo sh -c 'printf \"accept-flake-config = true\\n\" >> /etc/nix/nix.conf' ",
+  "overrideCommand": false,
+  "updateContentCommand": "devenv test"
+}

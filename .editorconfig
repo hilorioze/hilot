@@ -1,0 +1,23 @@
+root = true
+
+[*]
+charset = utf-8
+
+end_of_line = lf
+
+indent_style = space
+indent_size = 2
+
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.py]
+indent_size = 4
+
+# same as `indent-width` in `tombi.toml` which follows uv
+[*.toml]
+indent_size = 4
+
+# preserve markdown hard linebreaks (https://github.github.com/gfm/#hard-line-break)
+[*.md]
+trim_trailing_whitespace = false
