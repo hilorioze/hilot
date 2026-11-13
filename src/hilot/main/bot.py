@@ -21,6 +21,7 @@ from .di.database import DatabaseProvider
 from .di.extractors import LinkMatcherProvider
 from .di.formatters import FormatterProvider
 from .di.handlers import HandlerProvider
+from .di.http import RedirectReaderProvider
 from .di.media import WorkspaceProvider
 from .di.queue import QueueProvider
 from .di.s3 import S3Provider, StoredFileProvider
@@ -48,6 +49,7 @@ async def run() -> None:
         HandlerProvider(),
         FormatterProvider(),
         LinkMatcherProvider(),
+        RedirectReaderProvider(),
         WorkspaceProvider(),
         _InteractorProvider(),
         context={
