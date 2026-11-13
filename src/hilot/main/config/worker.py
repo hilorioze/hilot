@@ -1,8 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import timedelta
 
 from dature.fields.secret_str import SecretStr
 
+from .check_in import CheckInConfig
 from .http import HttpConfig
 
 
@@ -16,6 +17,8 @@ class WorkerConfig:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class BotConfig(WorkerConfig):
     max_message_age: timedelta
+
+    check_ins: list[CheckInConfig] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

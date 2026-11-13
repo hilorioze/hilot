@@ -1,13 +1,17 @@
 import asyncio
+from zoneinfo import ZoneInfo
 
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide_all
 from pyrogram import Client
 
+from hilot.application.check_ins.check_in import RunCheckIn
 from hilot.application.media.deliver import DeliverMedia
 from hilot.application.media.request_download import RequestDownload
+from hilot.domain.value_objects.check_in import CheckIn
 from hilot.domain.value_objects.message import AccountId
 from hilot.infrastructure.queue.routes import Route, get_delivery_route
 from hilot.infrastructure.telegram.authorization import Authorization
+from hilot.presentation.schedule.check_ins import run_check_ins
 from hilot.presentation.taskiq.media import deliver_media
 
 from .config.database import DatabaseConfig
@@ -32,7 +36,7 @@ from .worker import configure_logging, run_worker
 class _InteractorProvider(Provider):
     scope = Scope.REQUEST
 
-    interactors = provide_all(RequestDownload, DeliverMedia)
+    interactors = provide_all(RequestDownload, DeliverMedia, RunCheckIn)
 
 
 async def run() -> None:
@@ -66,8 +70,27 @@ async def run() -> None:
 
     client: Client = await container.get(Client)
 
-    async with client:
+    async with client, asyncio.TaskGroup() as group:
+        check_in_tasks: list[asyncio.Task[None]] = [
+            group.create_task(
+                run_check_ins(
+                    container=container,
+                    check_in=CheckIn(
+                        bot=config.bot, command=config.command, buttons=config.buttons
+                    ),
+                    start=config.start,
+                    end=config.end,
+                    timezone=ZoneInfo(schema.telegram.timezone),
+                )
+            )
+            for config in schema.bot.check_ins
+        ]
+
         await run_worker(container=container, config=schema.bot, task=deliver_media)
+
+        # the check-ins never finish; stop them with the worker
+        for task in check_in_tasks:
+            task.cancel()
 
     await container.close()
 

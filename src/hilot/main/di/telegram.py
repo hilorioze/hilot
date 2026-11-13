@@ -2,6 +2,7 @@ from dishka import AnyOf, Provider, Scope, from_context, provide
 from pyrogram import Client
 from pyrogram.storage.storage import Storage
 
+from hilot.domain.interfaces.adapters.chat_bot import ChatBot
 from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
@@ -13,6 +14,7 @@ from hilot.domain.interfaces.adapters.messenger import (
 )
 from hilot.domain.value_objects.message import AccountId
 from hilot.infrastructure.telegram.authorization import Authorization
+from hilot.infrastructure.telegram.chat_bot import KurigramChatBot
 from hilot.infrastructure.telegram.client import create_client
 from hilot.infrastructure.telegram.messenger import KurigramMessenger
 from hilot.infrastructure.telegram.storage import SQLStorage
@@ -64,3 +66,5 @@ class TelegramProvider(Provider):
         ],
         scope=Scope.APP,
     )
+
+    chat_bot = provide(KurigramChatBot, provides=ChatBot, scope=Scope.APP)

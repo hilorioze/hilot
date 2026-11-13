@@ -1,0 +1,13 @@
+from typing import Protocol
+
+from hilot.domain.value_objects.message import MessageId
+
+
+class ChatBot(Protocol):
+    async def is_used(self, bot: str) -> bool: ...
+
+    async def send_command(self, *, bot: str, command: str) -> MessageId: ...
+
+    async def press_button(self, *, bot: str, after: MessageId, data: str) -> str: ...
+
+    async def read_messages(self, bot: str) -> None: ...

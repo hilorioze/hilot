@@ -23,6 +23,7 @@ The commands share PostgreSQL, [NATS](https://nats.io/) with JetStream and an S3
 - `[telegram]`: the app and the device hilot logs in as; `hilot-login` and `hilot-bot` need the same one
 - `telegram.test_mode`: `hilot-login` logs in to [the test backend](https://core.telegram.org/api/auth#test-accounts); the session string keeps it for `hilot-bot`
 - `bot.max_message_age`: messages older than this that came in while `hilot-bot` was down are skipped
+- `bot.check_ins`: once a day, at a random moment between `start` and `end`, sends `command` to `bot` and presses `buttons` by their callback data; only on the accounts that have started the bot
 - `s3.reuse_period`: how long the other accounts send a delivered file from the bucket instead of downloading it again
 - `disk.min_free_space`: a download or a transcode that would leave less free waits for `disk.postpone_delay`
 - `concurrency`: the number of tasks a worker runs at once

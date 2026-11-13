@@ -8,3 +8,7 @@ class FileReferenceExpiredError(Exception):
 
 class MessageGoneError(Exception):
     pass
+
+
+class ButtonNotFoundError(Exception):
+    pass
