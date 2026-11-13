@@ -3,6 +3,7 @@ import asyncio
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide_all
 
 from hilot.application.media.download import DownloadMedia
+from hilot.application.media.report_failure import ReportFailure
 from hilot.infrastructure.queue.routes import DOWNLOAD_ROUTE, Route
 from hilot.presentation.taskiq.media import download_media
 
@@ -26,7 +27,7 @@ from .worker import configure_logging, run_worker
 class _InteractorProvider(Provider):
     scope = Scope.REQUEST
 
-    interactors = provide_all(DownloadMedia)
+    interactors = provide_all(DownloadMedia, ReportFailure)
 
 
 async def run() -> None:

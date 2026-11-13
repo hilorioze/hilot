@@ -20,6 +20,7 @@ class FailureReason(StrEnum):
     LOGIN_REQUIRED = "login_required"
     GEO_RESTRICTED = "geo_restricted"
     UNAVAILABLE = "unavailable"
+    BUG = "bug"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -43,6 +44,10 @@ class Failure:
             reason=cls._REASONS[type(error)],
             size=error.size if isinstance(error, TooBigError) else None,
         )
+
+    @classmethod
+    def from_bug(cls, link: Link) -> Self:
+        return cls(link=link, reason=FailureReason.BUG, size=None)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

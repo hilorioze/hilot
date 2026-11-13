@@ -2,6 +2,7 @@ import asyncio
 
 from dishka import AsyncContainer, Provider, Scope, make_async_container, provide_all
 
+from hilot.application.media.report_failure import ReportFailure
 from hilot.application.media.transcode import TranscodeMedia
 from hilot.infrastructure.queue.routes import TRANSCODE_ROUTE, Route
 from hilot.presentation.taskiq.media import transcode_media
@@ -20,7 +21,7 @@ from .worker import configure_logging, run_worker
 class _InteractorProvider(Provider):
     scope = Scope.REQUEST
 
-    interactors = provide_all(TranscodeMedia)
+    interactors = provide_all(TranscodeMedia, ReportFailure)
 
 
 async def run() -> None:

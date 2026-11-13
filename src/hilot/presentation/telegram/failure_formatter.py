@@ -9,6 +9,7 @@ class ChatFailureFormatter(FailureFormatter):
         FailureReason.LOGIN_REQUIRED: "it's private or needs a login",
         FailureReason.GEO_RESTRICTED: "not available in my region",
         FailureReason.UNAVAILABLE: "couldn't download it",
+        FailureReason.BUG: "something broke on my side",
     }
 
     @override
