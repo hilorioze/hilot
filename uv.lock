@@ -746,12 +746,8 @@ dependencies = [
     { name = "sqlalchemy", extra = ["postgresql-asyncpg"] },
     { name = "taskiq" },
     { name = "taskiq-nats" },
-    { name = "yt-dlp", extra = ["curl-cffi", "default"] },
-]
-
-[package.dev-dependencies]
-dev = [
     { name = "types-aiobotocore", extra = ["s3"] },
+    { name = "yt-dlp", extra = ["curl-cffi", "default"] },
 ]
 
 [package.metadata]
@@ -770,11 +766,9 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["postgresql-asyncpg"], specifier = ">=2.1.8" },
     { name = "taskiq", specifier = ">=0.13.0" },
     { name = "taskiq-nats", specifier = ">=0.7.0" },
+    { name = "types-aiobotocore", extras = ["s3"], specifier = ">=3.10.0" },
     { name = "yt-dlp", extras = ["curl-cffi", "default"], specifier = ">=2026.10.26" },
 ]
-
-[package.metadata.requires-dev]
-dev = [{ name = "types-aiobotocore", extras = ["s3"], specifier = ">=3.10.0" }]
 
 [[package]]
 name = "idna"
