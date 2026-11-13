@@ -84,4 +84,4 @@ jobs:
       - if: github.event_name != 'pull_request'
         run: ${{ steps.fetch-niks3-bin.outputs.niks3_bin }} push --server-url ${{ vars.NIKS3_SERVER }} --auth-token-script "node $RUNNER_TEMP/niks3/fetch-oidc-token.mjs" ${{ steps.fetch-niks3-bin.outputs.niks3_root }}
 
-      - run: nix run --inputs-from . nixpkgs#devenv -- build test
+      - run: nix run github:NixOS/nixpkgs/nixos-unstable#devenv -- build test # not `--inputs-from .`: `tasks.*.wantedBy` needs devenv 2.3.2, newer than the one in nixos-26.05

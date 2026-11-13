@@ -80,10 +80,10 @@ jobs:
 
       - id: update-devenv-lock
         run: |
-          nix run --inputs-from . nixpkgs#devenv -- update
+          nix run github:NixOS/nixpkgs/nixos-unstable#devenv -- update # not `--inputs-from .`: `tasks.*.wantedBy` needs devenv 2.3.2, newer than the one in nixos-26.05
 
           # auto-generate files (e.g. `.devcontainer/devcontainer.json`) and format code (treefmt & git-hooks) after lock and file updates
-          nix run --inputs-from . nixpkgs#devenv -- test || true
+          nix run github:NixOS/nixpkgs/nixos-unstable#devenv -- test || true
 
           body=$RUNNER_TEMP/devenv-lock-body.md
 

@@ -38,4 +38,4 @@ jobs:
             printf 'EOF\n'
           } >> $GITHUB_ENV
 
-      - run: nix run --inputs-from . nixpkgs#devenv -- test
+      - run: nix run github:NixOS/nixpkgs/nixos-unstable#devenv -- test # not `--inputs-from .`: `tasks.*.wantedBy` needs devenv 2.3.2, newer than the one in nixos-26.05
