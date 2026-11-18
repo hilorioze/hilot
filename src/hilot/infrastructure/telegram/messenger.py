@@ -211,6 +211,7 @@ class KurigramMessenger(
                     message=text,
                     random_id=self._get_random_id(source=source, part=part, index=0),
                     reply_to=self._create_reply_to(source=source, quote=quote),
+                    silent=True,
                 )
             )
 
@@ -300,6 +301,7 @@ class KurigramMessenger(
                 message="",
                 random_id=random_ids[0],
                 reply_to=reply_to,
+                silent=True,
             )
 
         return SendMultiMedia(
@@ -311,6 +313,7 @@ class KurigramMessenger(
                 for file_id, random_id in zip(files, random_ids, strict=True)
             ],
             reply_to=reply_to,
+            silent=True,
         )
 
     @staticmethod
