@@ -10,7 +10,7 @@ on:
       - pyproject.toml
       - uv.lock
 
-      # workflow reads `nixConfig` and uses `--inputs-from .`, so changes to them may affect the result
+      # workflow reads `nixConfig` and builds `.#default` against the pinned inputs, so changes to them may affect the result
       - flake.nix
       - flake.lock
 
