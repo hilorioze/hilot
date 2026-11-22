@@ -40,6 +40,8 @@ class GalleryDlMediaExtractor(MediaExtractor):
     def __init__(self, *, proxy: str | None) -> None:
         # gallery-dl takes its options only from the global config
         config.set(("extractor",), "proxy", proxy)
+        # reddit answers python's own tls handshake with 403 "blocked by network security", whatever the cookies and address
+        config.set(("extractor", "reddit"), "browser", "chrome")
         # gallery-dl caches logins and tokens, so they stay in memory like the cookies
         config.set(("cache",), "file", ":memory:")
         # a download reports every chunk, so the size limit stops it right away
