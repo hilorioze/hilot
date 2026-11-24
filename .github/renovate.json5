@@ -91,5 +91,23 @@
       // raise the lower bounds to the new versions; the default `replace` drops every update a `>=` range already allows
       rangeStrategy: 'bump',
     },
+
+    {
+      matchManagers: [
+        'pep621',
+      ],
+
+      matchPackageNames: [
+        'gallery-dl',
+        'yt-dlp',
+      ],
+
+      groupName: 'extractors',
+
+      // sites break the extractors any day; don't wait for the weekly window
+      schedule: [
+        'at any time',
+      ],
+    },
   ],
 }
