@@ -19,7 +19,7 @@ from hilot.presentation.taskiq.watermarks import reply_watermark_check
 
 from .config.database import DatabaseConfig
 from .config.loader import load_config
-from .config.nats import NatsConfig
+from .config.nats import NATSConfig
 from .config.s3 import S3Config
 from .config.schemas import BotSchema
 from .config.telegram import TelegramConfig
@@ -67,7 +67,7 @@ async def run() -> None:
         context={
             DatabaseConfig: schema.database,
             S3Config: schema.s3,
-            NatsConfig: schema.nats,
+            NATSConfig: schema.nats,
             # the file ids of the uploads belong to the account, so only its bot delivers them
             Route: get_delivery_route(account_id),
             Authorization: authorization,

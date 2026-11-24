@@ -14,16 +14,16 @@ from hilot.domain.interfaces.adapters.watermark_scheduler import (
 from hilot.infrastructure.queue.broker import RoutingJetStreamBroker
 from hilot.infrastructure.queue.routes import Route
 from hilot.infrastructure.queue.scheduler import TaskiqScheduler
-from hilot.main.config.nats import NatsConfig
+from hilot.main.config.nats import NATSConfig
 
 
 class QueueProvider(Provider):
-    config = from_context(provides=NatsConfig, scope=Scope.APP)
+    config = from_context(provides=NATSConfig, scope=Scope.APP)
 
     route = from_context(provides=Route, scope=Scope.APP)
 
     @provide(scope=Scope.APP)
-    async def get_broker(self, *, config: NatsConfig, route: Route) -> AsyncGenerator[AsyncBroker]:
+    async def get_broker(self, *, config: NATSConfig, route: Route) -> AsyncGenerator[AsyncBroker]:
         # a process consumes its own route and kicks the tasks of the others through the same broker
         broker: AsyncBroker = RoutingJetStreamBroker(
             servers=config.servers, token=config.token.get_secret_value(), route=route

@@ -4,14 +4,14 @@ from datetime import timedelta
 from dature.fields.secret_str import SecretStr
 
 from .check_in import CheckInConfig
-from .http import HttpConfig
+from .http import HTTPConfig
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class WorkerConfig:
     concurrency: int
 
-    http: HttpConfig
+    http: HTTPConfig
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

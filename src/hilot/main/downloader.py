@@ -11,7 +11,7 @@ from .config.cookies import CookiesConfig
 from .config.database import DatabaseConfig
 from .config.disk import DiskConfig
 from .config.loader import load_config
-from .config.nats import NatsConfig
+from .config.nats import NATSConfig
 from .config.s3 import S3Config
 from .config.schemas import DownloaderSchema
 from .config.worker import DownloaderConfig
@@ -48,7 +48,7 @@ async def run() -> None:
             DatabaseConfig: schema.database,
             CookiesConfig: schema.cookies,
             S3Config: schema.s3,
-            NatsConfig: schema.nats,
+            NATSConfig: schema.nats,
             Route: DOWNLOAD_ROUTE,
             DownloaderConfig: schema.downloader,
             DiskConfig: schema.disk,

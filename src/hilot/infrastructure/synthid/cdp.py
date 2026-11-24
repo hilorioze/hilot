@@ -9,16 +9,16 @@ from aiohttp import ClientSession, ClientWebSocketResponse, WSMsgType
 type EventHandler = Callable[[dict[str, Any]], Coroutine[Any, Any, None]]
 
 
-class CdpError(Exception):
+class CDPError(Exception):
     pass
 
 
-class BrowserClosedError(CdpError):
+class BrowserClosedError(CDPError):
     pass
 
 
 # a connection to a browser over the chrome devtools protocol, with flat sessions of its targets
-class CdpConnection:
+class CDPConnection:
     def __init__(self, websocket: ClientWebSocketResponse) -> None:
         self._websocket: ClientWebSocketResponse = websocket
         self._ids: itertools.count[int] = itertools.count(1)
@@ -30,7 +30,7 @@ class CdpConnection:
 
     @classmethod
     @asynccontextmanager
-    async def open(cls, *, session: ClientSession, url: str) -> AsyncGenerator[CdpConnection]:
+    async def open(cls, *, session: ClientSession, url: str) -> AsyncGenerator[CDPConnection]:
         async with session.get(f"{url}/json/version", raise_for_status=True) as response:
             version: dict[str, Any] = await response.json()
 
@@ -38,7 +38,7 @@ class CdpConnection:
         async with session.ws_connect(
             version["webSocketDebuggerUrl"], max_msg_size=0
         ) as websocket:
-            connection: CdpConnection = cls(websocket)
+            connection: CDPConnection = cls(websocket)
 
             async with asyncio.TaskGroup() as group:
                 reading: asyncio.Task[None] = group.create_task(connection._read())
@@ -78,7 +78,7 @@ class CdpConnection:
                 response: asyncio.Future[dict[str, Any]] = self._responses.pop(data["id"])
 
                 if "error" in data:
-                    response.set_exception(CdpError(data["error"]["message"]))
+                    response.set_exception(CDPError(data["error"]["message"]))
                 else:
                     response.set_result(data["result"])
             elif data["method"] in self._handlers:

@@ -8,10 +8,10 @@ from hilot.infrastructure.queue.routes import WATERMARK_ROUTE, Route
 from hilot.presentation.taskiq.watermarks import check_watermark
 
 from .config.loader import load_config
-from .config.nats import NatsConfig
+from .config.nats import NATSConfig
 from .config.s3 import S3Config
 from .config.schemas import DetectorSchema
-from .config.synthid import SynthIdConfig
+from .config.synthid import SynthIDConfig
 from .config.worker import DetectorConfig
 from .di.media import WorkspaceProvider
 from .di.queue import QueueProvider
@@ -37,10 +37,10 @@ async def run() -> None:
         _InteractorProvider(),
         context={
             S3Config: schema.s3,
-            NatsConfig: schema.nats,
+            NATSConfig: schema.nats,
             Route: WATERMARK_ROUTE,
             DetectorConfig: schema.detector,
-            SynthIdConfig: schema.synthid,
+            SynthIDConfig: schema.synthid,
         },
     )
 

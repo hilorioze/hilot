@@ -9,7 +9,7 @@ from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
 _REDIRECT_STATUSES: set[int] = {301, 302, 303, 307, 308}
 
 
-class HttpRedirectReader(RedirectReader):
+class HTTPRedirectReader(RedirectReader):
     def __init__(self, *, session: ClientSession) -> None:
         self._session: ClientSession = session
 

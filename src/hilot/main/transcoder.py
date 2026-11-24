@@ -9,7 +9,7 @@ from hilot.presentation.taskiq.media import transcode_media
 
 from .config.disk import DiskConfig
 from .config.loader import load_config
-from .config.nats import NatsConfig
+from .config.nats import NATSConfig
 from .config.s3 import S3Config
 from .config.schemas import TranscoderSchema
 from .di.media import DiskSpaceProvider, FfmpegProvider, WorkspaceProvider
@@ -36,7 +36,7 @@ async def run() -> None:
         _InteractorProvider(),
         context={
             S3Config: schema.s3,
-            NatsConfig: schema.nats,
+            NATSConfig: schema.nats,
             Route: TRANSCODE_ROUTE,
             DiskConfig: schema.disk,
         },

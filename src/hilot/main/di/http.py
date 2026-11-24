@@ -5,7 +5,7 @@ from dishka import Provider, Scope, provide
 
 from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
 from hilot.infrastructure.http.client import create_http_session
-from hilot.infrastructure.http.redirect_reader import HttpRedirectReader
+from hilot.infrastructure.http.redirect_reader import HTTPRedirectReader
 
 
 class RedirectReaderProvider(Provider):
@@ -16,4 +16,4 @@ class RedirectReaderProvider(Provider):
 
     @provide(scope=Scope.APP)
     def get_redirect_reader(self, session: ClientSession) -> RedirectReader:
-        return HttpRedirectReader(session=session)
+        return HTTPRedirectReader(session=session)

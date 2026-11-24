@@ -5,9 +5,9 @@ from dature.fields.secret_str import SecretStr
 from .cookies import CookiesConfig
 from .database import DatabaseConfig
 from .disk import DiskConfig
-from .nats import NatsConfig
+from .nats import NATSConfig
 from .s3 import S3Config
-from .synthid import SynthIdConfig
+from .synthid import SynthIDConfig
 from .telegram import TelegramConfig
 from .worker import BotConfig, DetectorConfig, DownloaderConfig, WorkerConfig
 
@@ -19,7 +19,7 @@ class BotSchema:
     bot: BotConfig
     telegram: TelegramConfig
     database: DatabaseConfig
-    nats: NatsConfig
+    nats: NATSConfig
     s3: S3Config
 
 
@@ -29,7 +29,7 @@ class DownloaderSchema:
     disk: DiskConfig
     cookies: CookiesConfig
     database: DatabaseConfig
-    nats: NatsConfig
+    nats: NATSConfig
     s3: S3Config
 
 
@@ -37,15 +37,15 @@ class DownloaderSchema:
 class TranscoderSchema:
     transcoder: WorkerConfig
     disk: DiskConfig
-    nats: NatsConfig
+    nats: NATSConfig
     s3: S3Config
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DetectorSchema:
     detector: DetectorConfig
-    synthid: SynthIdConfig
-    nats: NatsConfig
+    synthid: SynthIDConfig
+    nats: NATSConfig
     s3: S3Config
 
 

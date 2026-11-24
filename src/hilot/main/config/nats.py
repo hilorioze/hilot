@@ -4,6 +4,6 @@ from dature.fields.secret_str import SecretStr
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class NatsConfig:
+class NATSConfig:
     servers: list[str]
     token: SecretStr

@@ -2,6 +2,6 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class HttpConfig:
+class HTTPConfig:
     host: str
     port: int

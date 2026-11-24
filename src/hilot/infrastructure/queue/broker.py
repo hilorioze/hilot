@@ -4,7 +4,7 @@ from functools import partial
 from typing import ClassVar, override
 
 from nats.aio.msg import Msg
-from nats.errors import TimeoutError as NatsTimeoutError
+from nats.errors import TimeoutError as NATSTimeoutError
 from nats.js.api import ConsumerConfig, RetentionPolicy, StreamConfig
 from taskiq import AckableMessage, BrokerMessage
 from taskiq_nats import PullBasedJetStreamBroker
@@ -45,7 +45,7 @@ class RoutingJetStreamBroker(PullBasedJetStreamBroker):
                 messages: list[Msg] = await self.consumer.fetch(
                     batch=self.pull_consume_batch, timeout=self.pull_consume_timeout
                 )
-            except NatsTimeoutError:
+            except NATSTimeoutError:
                 continue
 
             for message in messages:

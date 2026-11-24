@@ -11,7 +11,7 @@ from yarl import URL
 
 from hilot.domain.value_objects.media import MediaKind
 
-from .cdp import CdpConnection
+from .cdp import CDPConnection
 from .client import FIREBASE_API_KEY, ORIGIN, DetectionRequest
 from .media_types import MEDIA_KINDS
 
@@ -52,7 +52,7 @@ _DROP_FILE: str = """
 """
 
 
-class SynthIdAttestor:
+class SynthIDAttestor:
     # the page decodes an audio or a video before its upload, but takes any bytes as an image
     _DUMMIES: ClassVar[dict[MediaKind, str]] = {
         MediaKind.PHOTO: "dummy.png",
@@ -76,8 +76,8 @@ class SynthIdAttestor:
     _SETTLE_DELAY: ClassVar[float] = 1.5
     _TIMEOUT: ClassVar[float] = 30
 
-    def __init__(self, *, cdp: CdpConnection, session_id: str, proxy: URL | None) -> None:
-        self._cdp: CdpConnection = cdp
+    def __init__(self, *, cdp: CDPConnection, session_id: str, proxy: URL | None) -> None:
+        self._cdp: CDPConnection = cdp
         self._session_id: str = session_id
         self._proxy: URL | None = proxy
 
@@ -103,8 +103,8 @@ class SynthIdAttestor:
         proxy: URL | None,
         uid: str,
         refresh_token: str,
-    ) -> AsyncGenerator[SynthIdAttestor]:
-        async with CdpConnection.open(session=session, url=cdp_url) as cdp:
+    ) -> AsyncGenerator[SynthIDAttestor]:
+        async with CDPConnection.open(session=session, url=cdp_url) as cdp:
             # a context of its own has no cookies of the earlier runs and goes through the proxy
             context_params: dict[str, Any] = {"disposeOnDetach": True}
 
@@ -120,7 +120,7 @@ class SynthIdAttestor:
                 "Target.attachToTarget", {"targetId": target["targetId"], "flatten": True}
             )
 
-            attestor: SynthIdAttestor = cls(cdp=cdp, session_id=attached["sessionId"], proxy=proxy)
+            attestor: SynthIDAttestor = cls(cdp=cdp, session_id=attached["sessionId"], proxy=proxy)
             await attestor._sign_in(uid=uid, refresh_token=refresh_token)
 
             yield attestor

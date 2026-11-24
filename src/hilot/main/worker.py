@@ -15,7 +15,7 @@ from hilot.infrastructure.queue.middleware import FailureMetricMiddleware
 from hilot.infrastructure.queue.routes import Route
 from hilot.presentation.http.app import create_http_app
 
-from .config.http import HttpConfig
+from .config.http import HTTPConfig
 from .config.worker import WorkerConfig
 
 
@@ -53,7 +53,7 @@ async def run_worker(
 
 
 @asynccontextmanager
-async def _serve_http(config: HttpConfig) -> AsyncGenerator[None]:
+async def _serve_http(config: HTTPConfig) -> AsyncGenerator[None]:
     # the health checks and the scrapes of prometheus would fill the journal with access logs
     runner: web.AppRunner = web.AppRunner(create_http_app(), access_log=None)
     await runner.setup()

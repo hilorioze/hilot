@@ -9,7 +9,7 @@ from aiohttp import ClientResponse, ClientSession
 
 from hilot.domain.value_objects.watermark import WatermarkCheck
 
-from .accounts import IdToken
+from .accounts import IDToken
 from .response import parse_response
 
 # the firebase project of synthid.com
@@ -25,7 +25,7 @@ class DetectionRequest:
     body: str
 
 
-class SynthIdClient:
+class SynthIDClient:
     # the page's own credentials of the upload service
     _UPLOAD_HEADERS: ClassVar[dict[str, str]] = {
         "Authorization": "Basic amI5dChNbS0qNjFlczJJVzpyZyRHNUp1QENpV29OJVNS",
@@ -38,7 +38,7 @@ class SynthIdClient:
     def __init__(self, session: ClientSession) -> None:
         self._session: ClientSession = session
 
-    async def refresh_id_token(self, refresh_token: str) -> IdToken:
+    async def refresh_id_token(self, refresh_token: str) -> IDToken:
         async with self._session.post(
             "https://securetoken.googleapis.com/v1/token",
             params={"key": FIREBASE_API_KEY},
@@ -49,7 +49,7 @@ class SynthIdClient:
         ) as response:
             token: dict[str, Any] = await response.json()
 
-        return IdToken(
+        return IDToken(
             uid=token["user_id"],
             value=token["id_token"],
             expires_at=time.monotonic() + int(token["expires_in"]),
@@ -90,7 +90,7 @@ class SynthIdClient:
             ) as response:
                 return await response.text()
 
-    async def detect(self, *, request: DetectionRequest, id_token: IdToken) -> WatermarkCheck:
+    async def detect(self, *, request: DetectionRequest, id_token: IDToken) -> WatermarkCheck:
         # the page's header has its own id token first, the attestation is bound to the body alone
         authorization: list[Any] = json.loads(request.headers[self._AUTHORIZATION_HEADER])
         authorization[0] = id_token.value

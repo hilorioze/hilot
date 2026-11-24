@@ -8,33 +8,33 @@ from hilot.domain.interfaces.adapters.watermark_detector import WatermarkDetecto
 from hilot.domain.value_objects.media import MediaKind
 from hilot.domain.value_objects.watermark import WatermarkCheck
 
-from .accounts import IdToken, SynthIdAccount, SynthIdAccountPool
-from .attestor import SynthIdAttestor
-from .client import DetectionRequest, SynthIdClient
+from .accounts import IDToken, SynthIDAccount, SynthIDAccountPool
+from .attestor import SynthIDAttestor
+from .client import DetectionRequest, SynthIDClient
 from .errors import QuotaExceededError
 from .media_types import MEDIA_KINDS
 
 _logger: logging.Logger = logging.getLogger(__name__)
 
 
-class SynthIdWatermarkDetector(WatermarkDetector):
+class SynthIDWatermarkDetector(WatermarkDetector):
     # an id token is refreshed a bit before it expires, so it lasts through the upload
     _ID_TOKEN_MARGIN: ClassVar[float] = 300
 
     def __init__(
-        self, *, client: SynthIdClient, attestor: SynthIdAttestor, account_pool: SynthIdAccountPool
+        self, *, client: SynthIDClient, attestor: SynthIDAttestor, account_pool: SynthIDAccountPool
     ) -> None:
-        self._client: SynthIdClient = client
-        self._attestor: SynthIdAttestor = attestor
-        self._account_pool: SynthIdAccountPool = account_pool
+        self._client: SynthIDClient = client
+        self._attestor: SynthIDAttestor = attestor
+        self._account_pool: SynthIDAccountPool = account_pool
 
     @override
     async def detect(self, *, path: Path, mime_type: str) -> WatermarkCheck:
         kind: MediaKind = MEDIA_KINDS[mime_type]
 
         while True:
-            account: SynthIdAccount = await self._account_pool.take(kind)
-            id_token: IdToken = await self._get_id_token(account)
+            account: SynthIDAccount = await self._account_pool.take(kind)
+            id_token: IDToken = await self._get_id_token(account)
 
             # the upload keeps the media for a day under a path of the account's own
             stored_path: str = await self._client.upload(
@@ -54,7 +54,7 @@ class SynthIdWatermarkDetector(WatermarkDetector):
                     account=account, kind=kind, retry_after=error.retry_after
                 )
 
-    async def _get_id_token(self, account: SynthIdAccount) -> IdToken:
+    async def _get_id_token(self, account: SynthIDAccount) -> IDToken:
         if (
             account.id_token is None
             or account.id_token.expires_at - self._ID_TOKEN_MARGIN < time.monotonic()

@@ -12,7 +12,7 @@ _logger: logging.Logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
-class IdToken:
+class IDToken:
     uid: str
     value: str
 
@@ -21,28 +21,28 @@ class IdToken:
 
 
 @dataclass(slots=True, kw_only=True)
-class SynthIdAccount:
+class SynthIDAccount:
     refresh_token: str
 
-    id_token: IdToken | None = None
+    id_token: IDToken | None = None
 
     # synthid keeps a quota of each media kind, the monotonic time each of them resets
     quota_resets: dict[MediaKind, float] = field(default_factory=dict)
 
 
-class SynthIdAccountPool:
+class SynthIDAccountPool:
     _RESET_MARGIN: ClassVar[float] = 1
     _MAX_WAIT: ClassVar[float] = 60
 
     def __init__(self, refresh_tokens: list[str]) -> None:
-        self._accounts: list[SynthIdAccount] = [
-            SynthIdAccount(refresh_token=refresh_token) for refresh_token in refresh_tokens
+        self._accounts: list[SynthIDAccount] = [
+            SynthIDAccount(refresh_token=refresh_token) for refresh_token in refresh_tokens
         ]
 
-    async def take(self, kind: MediaKind) -> SynthIdAccount:
+    async def take(self, kind: MediaKind) -> SynthIDAccount:
         while True:
             now: float = time.monotonic()
-            account: SynthIdAccount = min(
+            account: SynthIDAccount = min(
                 self._accounts, key=lambda account: account.quota_resets.get(kind, 0)
             )
             reset: float = account.quota_resets.get(kind, 0)
@@ -62,7 +62,7 @@ class SynthIdAccountPool:
 
             await asyncio.sleep(reset - now)
 
-    def exhaust(self, *, account: SynthIdAccount, kind: MediaKind, retry_after: timedelta) -> None:
+    def exhaust(self, *, account: SynthIDAccount, kind: MediaKind, retry_after: timedelta) -> None:
         # synthid resets a quota up to a second after it says
         account.quota_resets[kind] = (
             time.monotonic() + retry_after.total_seconds() + self._RESET_MARGIN
