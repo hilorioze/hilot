@@ -80,9 +80,14 @@ class YtDlpMediaExtractor(MediaExtractor):
 
             with _translate_errors():
                 # the stubs type the info without the fields yt-dlp adds to it
-                info: dict[str, Any] = cast(
-                    dict[str, Any], await asyncio.to_thread(ydl.extract_info, url, download=False)
+                info: dict[str, Any] | None = cast(
+                    dict[str, Any] | None,
+                    await asyncio.to_thread(ydl.extract_info, url, download=False),
                 )
+
+            # an extractor returns nothing for a link without its media, like a telegram post with only photos
+            if info is None:
+                raise NoMediaError
 
             infos: list[dict[str, Any]] = self._list_infos(info)
 
