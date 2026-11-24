@@ -8,12 +8,13 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container, provid
 from hilot.application.cookies.import_ import ImportCookies, ImportCookiesDTO
 from hilot.infrastructure.extractors.cookies import read_cookie_jar
 
-from .config.cookies import CookiesConfig
 from .config.database import DatabaseConfig
+from .config.encryption import EncryptionConfig
 from .config.loader import load_config
 from .config.schemas import CookieImportSchema
 from .di.cookies import CookiesProvider
 from .di.database import DatabaseProvider
+from .di.encryption import EncryptionProvider
 
 
 class _InteractorProvider(Provider):
@@ -31,9 +32,10 @@ async def run(path: Path) -> None:
 
     container: AsyncContainer = make_async_container(
         DatabaseProvider(),
+        EncryptionProvider(),
         CookiesProvider(),
         _InteractorProvider(),
-        context={DatabaseConfig: schema.database, CookiesConfig: schema.cookies},
+        context={DatabaseConfig: schema.database, EncryptionConfig: schema.encryption},
     )
 
     async with container() as request_container:

@@ -2,20 +2,29 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, ClassVar
 
 from aiohttp import ClientResponse, ClientSession
 
+from hilot.domain.errors.watermark import DetectionAccountRevokedError
 from hilot.domain.value_objects.watermark import WatermarkCheck
 
-from .accounts import IDToken
 from .response import parse_response
 
 # the firebase project of synthid.com
 FIREBASE_API_KEY: str = "AIzaSyCjADz3UffE3DF5HZ--7MgVEXrbt6Bgcck"
 
 ORIGIN: str = "https://synthid.com"
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class IDToken:
+    value: str
+
+    # monotonic time
+    expires_at: float
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -45,12 +54,15 @@ class SynthIDClient:
             data={"grant_type": "refresh_token", "refresh_token": refresh_token},
             # the api key takes requests only from synthid.com
             headers={"Referer": f"{ORIGIN}/"},
-            raise_for_status=True,
         ) as response:
+            # firebase answers a revoked refresh token, of a deleted or a disabled account too, with a bad request
+            if response.status == HTTPStatus.BAD_REQUEST:
+                raise DetectionAccountRevokedError((await response.json())["error"]["message"])
+
+            response.raise_for_status()
             token: dict[str, Any] = await response.json()
 
         return IDToken(
-            uid=token["user_id"],
             value=token["id_token"],
             expires_at=time.monotonic() + int(token["expires_in"]),
         )

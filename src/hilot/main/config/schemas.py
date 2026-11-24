@@ -2,12 +2,11 @@ from dataclasses import dataclass
 
 from dature.fields.secret_str import SecretStr
 
-from .cookies import CookiesConfig
 from .database import DatabaseConfig
 from .disk import DiskConfig
+from .encryption import EncryptionConfig
 from .nats import NATSConfig
 from .s3 import S3Config
-from .synthid import SynthIDConfig
 from .telegram import TelegramConfig
 from .worker import BotConfig, DetectorConfig, DownloaderConfig, WorkerConfig
 
@@ -27,7 +26,7 @@ class BotSchema:
 class DownloaderSchema:
     downloader: DownloaderConfig
     disk: DiskConfig
-    cookies: CookiesConfig
+    encryption: EncryptionConfig
     database: DatabaseConfig
     nats: NATSConfig
     s3: S3Config
@@ -44,14 +43,15 @@ class TranscoderSchema:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DetectorSchema:
     detector: DetectorConfig
-    synthid: SynthIDConfig
+    encryption: EncryptionConfig
+    database: DatabaseConfig
     nats: NATSConfig
     s3: S3Config
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CookieImportSchema:
-    cookies: CookiesConfig
+    encryption: EncryptionConfig
     database: DatabaseConfig
 
 

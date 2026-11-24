@@ -1,0 +1,13 @@
+from typing import Protocol
+
+from hilot.domain.entities.detection_account import DetectionAccount
+
+
+class DetectionAccountRepository(Protocol):
+    async def get(self, uid: str) -> DetectionAccount | None: ...
+
+    async def get_all(self) -> list[DetectionAccount]: ...
+
+    async def save(self, account: DetectionAccount) -> None: ...
+
+    async def delete(self, account: DetectionAccount) -> None: ...

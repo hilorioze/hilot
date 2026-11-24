@@ -7,9 +7,9 @@ from hilot.application.media.report_failure import ReportFailure
 from hilot.infrastructure.queue.routes import DOWNLOAD_ROUTE, Route
 from hilot.presentation.taskiq.media import download_media
 
-from .config.cookies import CookiesConfig
 from .config.database import DatabaseConfig
 from .config.disk import DiskConfig
+from .config.encryption import EncryptionConfig
 from .config.loader import load_config
 from .config.nats import NATSConfig
 from .config.s3 import S3Config
@@ -17,6 +17,7 @@ from .config.schemas import DownloaderSchema
 from .config.worker import DownloaderConfig
 from .di.cookies import CookiesProvider
 from .di.database import DatabaseProvider
+from .di.encryption import EncryptionProvider
 from .di.extractors import MediaExtractorProvider
 from .di.media import DiskSpaceProvider, FfmpegProvider, WorkspaceProvider
 from .di.queue import QueueProvider
@@ -35,6 +36,7 @@ async def run() -> None:
 
     container: AsyncContainer = make_async_container(
         DatabaseProvider(),
+        EncryptionProvider(),
         CookiesProvider(),
         S3Provider(),
         StoredFileProvider(),
@@ -46,7 +48,7 @@ async def run() -> None:
         _InteractorProvider(),
         context={
             DatabaseConfig: schema.database,
-            CookiesConfig: schema.cookies,
+            EncryptionConfig: schema.encryption,
             S3Config: schema.s3,
             NATSConfig: schema.nats,
             Route: DOWNLOAD_ROUTE,

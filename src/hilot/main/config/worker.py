@@ -28,7 +28,5 @@ class DownloaderConfig(WorkerConfig):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DetectorConfig(WorkerConfig):
-    # the devtools address of the browser the attestations come from
+    # the devtools address of the browser the attestations and the accounts come from
     browser_url: str
-
-    proxy: SecretStr | None = None

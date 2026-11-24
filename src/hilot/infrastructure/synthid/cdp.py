@@ -23,7 +23,8 @@ class CDPConnection:
         self._websocket: ClientWebSocketResponse = websocket
         self._ids: itertools.count[int] = itertools.count(1)
         self._responses: dict[int, asyncio.Future[dict[str, Any]]] = {}
-        self._handlers: dict[str, EventHandler] = {}
+        # an event of a target's session goes to the handlers of that session
+        self._handlers: dict[tuple[str, str | None], EventHandler] = {}
 
         # an event handler sends commands itself, so it runs apart from the reading
         self._handler_tasks: set[asyncio.Task[None]] = set()
@@ -48,8 +49,11 @@ class CDPConnection:
                 finally:
                     reading.cancel()
 
-    def on(self, method: str, handler: EventHandler) -> None:
-        self._handlers[method] = handler
+    def on(self, method: str, handler: EventHandler, *, session_id: str | None = None) -> None:
+        self._handlers[method, session_id] = handler
+
+    def off(self, method: str, *, session_id: str | None = None) -> None:
+        del self._handlers[method, session_id]
 
     async def send(
         self, method: str, params: dict[str, Any] | None = None, *, session_id: str | None = None
@@ -81,10 +85,10 @@ class CDPConnection:
                     response.set_exception(CDPError(data["error"]["message"]))
                 else:
                     response.set_result(data["result"])
-            elif data["method"] in self._handlers:
-                task: asyncio.Task[None] = asyncio.create_task(
-                    self._handlers[data["method"]](data["params"])
-                )
+            elif (
+                handler := self._handlers.get((data["method"], data.get("sessionId")))
+            ) is not None:
+                task: asyncio.Task[None] = asyncio.create_task(handler(data["params"]))
                 self._handler_tasks.add(task)
                 task.add_done_callback(self._handler_tasks.discard)
 

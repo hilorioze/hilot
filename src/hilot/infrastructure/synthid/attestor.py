@@ -7,8 +7,8 @@ from importlib.resources import files
 from typing import Any, ClassVar
 
 from aiohttp import ClientSession
-from yarl import URL
 
+from hilot.domain.entities.detection_account import DetectionAccount
 from hilot.domain.value_objects.media import MediaKind
 
 from .cdp import CDPConnection
@@ -72,46 +72,37 @@ class SynthIDAttestor:
     _DETECTION_URL: ClassVar[str] = f"{ORIGIN}/_/WatermarkApp/data/batchexecute?rpcids=TZRKo"
 
     # the attestation script loads with the page and needs a moment before it attests anything
-
     _SETTLE_DELAY: ClassVar[float] = 1.5
     _TIMEOUT: ClassVar[float] = 30
 
-    def __init__(self, *, cdp: CDPConnection, session_id: str, proxy: URL | None) -> None:
+    def __init__(self, *, cdp: CDPConnection, session_id: str) -> None:
         self._cdp: CDPConnection = cdp
         self._session_id: str = session_id
-        self._proxy: URL | None = proxy
 
         # one page attests one request at a time
         self._lock: asyncio.Lock = asyncio.Lock()
 
         self._loaded: asyncio.Event = asyncio.Event()
 
+        # the account the page is signed in to
+        self._uid: str | None = None
+
         self._stored_path: str = ""
         self._detection: asyncio.Future[DetectionRequest] | None = None
 
-        cdp.on("Page.loadEventFired", self._handle_load)
-        cdp.on("Fetch.requestPaused", self._handle_request)
-        cdp.on("Fetch.authRequired", self._handle_auth)
+        cdp.on("Page.loadEventFired", self._handle_load, session_id=session_id)
+        cdp.on("Fetch.requestPaused", self._handle_request, session_id=session_id)
 
     @classmethod
     @asynccontextmanager
     async def open(
-        cls,
-        *,
-        session: ClientSession,
-        cdp_url: str,
-        proxy: URL | None,
-        uid: str,
-        refresh_token: str,
+        cls, *, session: ClientSession, cdp_url: str
     ) -> AsyncGenerator[SynthIDAttestor]:
         async with CDPConnection.open(session=session, url=cdp_url) as cdp:
-            # a context of its own has no cookies of the earlier runs and goes through the proxy
-            context_params: dict[str, Any] = {"disposeOnDetach": True}
-
-            if proxy is not None:
-                context_params["proxyServer"] = str(proxy.with_user(None))
-
-            context: dict[str, Any] = await cdp.send("Target.createBrowserContext", context_params)
+            # a context of its own keeps the page apart from the logins in the browser
+            context: dict[str, Any] = await cdp.send(
+                "Target.createBrowserContext", {"disposeOnDetach": True}
+            )
             target: dict[str, Any] = await cdp.send(
                 "Target.createTarget",
                 {"url": "about:blank", "browserContextId": context["browserContextId"]},
@@ -120,14 +111,21 @@ class SynthIDAttestor:
                 "Target.attachToTarget", {"targetId": target["targetId"], "flatten": True}
             )
 
-            attestor: SynthIDAttestor = cls(cdp=cdp, session_id=attached["sessionId"], proxy=proxy)
-            await attestor._sign_in(uid=uid, refresh_token=refresh_token)
+            attestor: SynthIDAttestor = cls(cdp=cdp, session_id=attached["sessionId"])
+            await attestor._send("Page.enable", {})
+            await attestor._send("Fetch.enable", {"patterns": [{"urlPattern": "*"}]})
 
             yield attestor
 
-    async def attest(self, *, mime_type: str, stored_path: str) -> DetectionRequest:
+    # the page attests for any account, so it stays signed in to the first one it's given
+    async def attest(
+        self, *, account: DetectionAccount, mime_type: str, stored_path: str
+    ) -> DetectionRequest:
         async with self._lock:
-            await self._open_page()
+            if self._uid is None:
+                await self._sign_in(account)
+            else:
+                await self._open_page()
 
             self._stored_path = stored_path
             self._detection = asyncio.get_running_loop().create_future()
@@ -139,22 +137,22 @@ class SynthIDAttestor:
 
             return await asyncio.wait_for(self._detection, self._TIMEOUT)
 
-    async def _sign_in(self, *, uid: str, refresh_token: str) -> None:
-        await self._send("Page.enable", {})
-        await self._send(
-            "Fetch.enable", {"patterns": [{"urlPattern": "*"}], "handleAuthRequests": True}
-        )
+    # a signed out account signs the page out too, so the next attestation signs in to another one
+    def forget(self, uid: str) -> None:
+        if self._uid == uid:
+            self._uid = None
 
+    async def _sign_in(self, account: DetectionAccount) -> None:
         await self._navigate()
         await self._call_function(
             _RESTORE_SESSION,
             {
                 "fbase_key": f"firebase:authUser:{FIREBASE_API_KEY}:[DEFAULT]",
                 "value": {
-                    "uid": uid,
+                    "uid": account.uid,
                     # firebase refreshes the missing id token and the rest of the user before using them
                     "stsTokenManager": {
-                        "refreshToken": refresh_token,
+                        "refreshToken": account.refresh_token,
                         "accessToken": None,
                         "expirationTime": 0,
                     },
@@ -169,6 +167,8 @@ class SynthIDAttestor:
 
         # firebase reads its session only on loading
         await self._navigate()
+
+        self._uid = account.uid
 
     async def _open_page(self) -> None:
         # the page shows the last result in place of its file input
@@ -251,22 +251,6 @@ class SynthIDAttestor:
                     {"name": name, "value": value} for name, value in headers.items()
                 ],
                 "body": base64.b64encode(body.encode()).decode(),
-            },
-        )
-
-    async def _handle_auth(self, event: dict[str, Any]) -> None:
-        # chrome takes the proxy without its credentials, so it asks for them
-        await self._send(
-            "Fetch.continueWithAuth",
-            {
-                "requestId": event["requestId"],
-                "authChallengeResponse": {
-                    "response": "ProvideCredentials",
-                    "username": self._proxy.user,
-                    "password": self._proxy.password,
-                }
-                if self._proxy is not None and event["authChallenge"]["source"] == "Proxy"
-                else {"response": "CancelAuth"},
             },
         )
 
