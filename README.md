@@ -8,6 +8,8 @@ A multi-functional Telegram userbot.
 
 A link in an outgoing or a private message gets the media behind it as a reply.
 
+`.dl` or `.download` downloads the links given to it. In reply to a message, it downloads the links of that message, and the media takes the place of the command.
+
 ### SynthID check
 
 `.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and puts the verdict in place of the command.

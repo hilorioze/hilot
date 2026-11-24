@@ -57,6 +57,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageDeleter,
     MessageMediaReader,
     MessageReader,
     ProgressIndicator,
@@ -78,6 +79,7 @@ class KurigramMessenger(
     MediaRefresher,
     TextSender,
     TextEditor,
+    MessageDeleter,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
 
@@ -208,7 +210,7 @@ class KurigramMessenger(
 
     @override
     async def send_media(
-        self, *, source: SourceMessage, part: int, files: list[FileId]
+        self, *, source: SourceMessage, part: int, files: list[FileId], reply_to: MessageId
     ) -> list[MessageId]:
         random_ids: list[int] = [
             self._get_random_id(source=source, part=part, index=index)
@@ -216,7 +218,7 @@ class KurigramMessenger(
         ]
 
         query: SendMedia | SendMultiMedia = await self._create_media_query(
-            source=source, files=files, random_ids=random_ids
+            chat_id=source.chat_id, files=files, random_ids=random_ids, reply_to=reply_to
         )
 
         with self._translate_errors():
@@ -250,17 +252,22 @@ class KurigramMessenger(
                     peer=await self._resolve_peer(source.chat_id),
                     message=text,
                     random_id=self._get_random_id(source=source, part=part, index=0),
-                    reply_to=self._create_reply_to(source=source, quote=quote),
+                    reply_to=self._create_reply_to(message_id=source.message_id, quote=quote),
                     silent=True,
                 )
             )
 
     @override
     async def edit_text(self, *, source: SourceMessage, text: str) -> None:
-        # the text of a media message is its caption
-        await self._client.edit_message_text(
-            chat_id=source.chat_id, message_id=source.message_id, text=text
-        )
+        # the text of a media message is its caption; a redelivered reply finds its text already in place
+        with suppress(MessageNotModified):
+            await self._client.edit_message_text(
+                chat_id=source.chat_id, message_id=source.message_id, text=text
+            )
+
+    @override
+    async def delete_message(self, source: SourceMessage) -> None:
+        await self._client.delete_messages(chat_id=source.chat_id, message_ids=source.message_id)
 
     async def _save_file_showing_progress(
         self, *, peer: InputPeer, kind: MediaKind, path: Path
@@ -335,10 +342,17 @@ class KurigramMessenger(
         )
 
     async def _create_media_query(
-        self, *, source: SourceMessage, files: list[FileId], random_ids: list[int]
+        self,
+        *,
+        chat_id: ChatId,
+        files: list[FileId],
+        random_ids: list[int],
+        reply_to: MessageId,
     ) -> SendMedia | SendMultiMedia:
-        peer: InputPeer = await self._resolve_peer(source.chat_id)
-        reply_to: InputReplyToMessage = self._create_reply_to(source=source, quote=None)
+        peer: InputPeer = await self._resolve_peer(chat_id)
+        input_reply_to: InputReplyToMessage = self._create_reply_to(
+            message_id=reply_to, quote=None
+        )
 
         # a lone media goes out as a plain message, as the official app sends it
         if len(files) == 1:
@@ -347,7 +361,7 @@ class KurigramMessenger(
                 media=get_input_media_from_file_id(files[0]),
                 message="",
                 random_id=random_ids[0],
-                reply_to=reply_to,
+                reply_to=input_reply_to,
                 silent=True,
             )
 
@@ -359,17 +373,17 @@ class KurigramMessenger(
                 )
                 for file_id, random_id in zip(files, random_ids, strict=True)
             ],
-            reply_to=reply_to,
+            reply_to=input_reply_to,
             silent=True,
         )
 
     @staticmethod
-    def _create_reply_to(*, source: SourceMessage, quote: Link | None) -> InputReplyToMessage:
+    def _create_reply_to(*, message_id: MessageId, quote: Link | None) -> InputReplyToMessage:
         if quote is None:
-            return InputReplyToMessage(reply_to_msg_id=source.message_id)
+            return InputReplyToMessage(reply_to_msg_id=message_id)
 
         return InputReplyToMessage(
-            reply_to_msg_id=source.message_id, quote_text=quote.text, quote_offset=quote.offset
+            reply_to_msg_id=message_id, quote_text=quote.text, quote_offset=quote.offset
         )
 
     @staticmethod

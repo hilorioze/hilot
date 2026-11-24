@@ -12,7 +12,7 @@ from hilot.domain.errors.extraction import (
 )
 
 from .media import StoredMedia
-from .message import Link, SourceMessage
+from .message import Link, MessageId, SourceMessage
 
 
 class FailureReason(StrEnum):
@@ -50,12 +50,44 @@ class Failure:
         return cls(link=link, reason=FailureReason.BUG, size=None)
 
 
+class DownloadTrigger(StrEnum):
+    # a message with links, downloaded by itself
+    LINK = "link"
+
+    # the owner's `.dl` with links of its own, answered like a link
+    COMMAND = "command"
+
+    # the owner's `.dl` in reply to a message with links, which the media takes the place of
+    REPLY_COMMAND = "reply_command"
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DownloadRequest:
+    # the message with the links or the command
     source: SourceMessage
+    trigger: DownloadTrigger
+
     links: list[Link]
 
+    # the message the media replies to
+    reply_to: MessageId
+
     size_limit: int
+
+    # the owner calls a command on purpose, so unlike a link it shows progress and failures in groups too
+    def is_commanded(self) -> bool:
+        return self.trigger != DownloadTrigger.LINK
+
+    def shows_progress(self) -> bool:
+        return (
+            self.source.allows_reactions() if self.is_commanded() else self.source.shows_progress()
+        )
+
+    def reports_failures(self) -> bool:
+        return self.is_commanded() or self.source.reports_failures()
+
+    def replaces_command(self) -> bool:
+        return self.trigger == DownloadTrigger.REPLY_COMMAND
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

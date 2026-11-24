@@ -24,6 +24,21 @@ class ChatFailureFormatter(FailureFormatter):
             f"too big: {self._format_size(failure.size)}, limit is {self._format_size(size_limit)}"
         )
 
+    @override
+    def format_failures(self, *, failures: list[Failure], size_limit: int) -> str:
+        if len(failures) == 1:
+            return self.format_failure(failure=failures[0], size_limit=size_limit)
+
+        # several failures go into one message, each after its link
+        return "\n".join(
+            f"{failure.link.text}: {self.format_failure(failure=failure, size_limit=size_limit)}"
+            for failure in failures
+        )
+
+    @override
+    def format_no_links(self) -> str:
+        return "nothing to download, add a link or reply to one"
+
     @staticmethod
     def _format_size(size: int) -> str:
         return f"{round(size / 1024**3, 1):g} GB"

@@ -36,7 +36,7 @@ class MediaUploader(Protocol):
 
 class MediaSender(Protocol):
     async def send_media(
-        self, *, source: SourceMessage, part: int, files: list[FileId]
+        self, *, source: SourceMessage, part: int, files: list[FileId], reply_to: MessageId
     ) -> list[MessageId]: ...
 
 
@@ -52,3 +52,7 @@ class TextSender(Protocol):
 
 class TextEditor(Protocol):
     async def edit_text(self, *, source: SourceMessage, text: str) -> None: ...
+
+
+class MessageDeleter(Protocol):
+    async def delete_message(self, source: SourceMessage) -> None: ...

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import cast, override
 
-from pyrogram import Client
+from pyrogram import Client, filters
 from pyrogram.enums import ChatType
 from pyrogram.filters import Filter
 from pyrogram.raw.base.update import Update as RawUpdate
@@ -27,3 +27,6 @@ class BotChatFilter(Filter):
     async def __call__(self, _: Client, update: Update | RawUpdate) -> bool:
         # telegram sends each message with its chat
         return cast(Chat, cast(Message, update).chat).type == ChatType.BOT
+
+
+COMMAND: Filter = filters.regex(r"^\.\w")

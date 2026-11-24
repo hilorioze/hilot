@@ -19,8 +19,10 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageDeleter,
     MessageReader,
     ProgressIndicator,
+    TextEditor,
     TextSender,
 )
 from hilot.domain.interfaces.adapters.workspace import Workspace
@@ -28,7 +30,11 @@ from hilot.domain.interfaces.repositories.cached_file import CachedFileRepositor
 from hilot.domain.interfaces.repositories.delivered_part import DeliveredPartRepository
 from hilot.domain.interfaces.repositories.stored_file import StoredFileRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
-from hilot.domain.value_objects.download import DownloadRequest, DownloadResult, Failure
+from hilot.domain.value_objects.download import (
+    DownloadRequest,
+    DownloadResult,
+    Failure,
+)
 from hilot.domain.value_objects.media import FileId, MediaKind, StoredMedia
 from hilot.domain.value_objects.message import Link, MessageId, SourceMessage
 
@@ -53,6 +59,8 @@ class DeliverMedia:
         media_sender: MediaSender,
         media_refresher: MediaRefresher,
         text_sender: TextSender,
+        text_editor: TextEditor,
+        message_deleter: MessageDeleter,
         failure_formatter: FailureFormatter,
         file_storage: FileStorage,
         workspace: Workspace,
@@ -68,6 +76,8 @@ class DeliverMedia:
         self._media_sender: MediaSender = media_sender
         self._media_refresher: MediaRefresher = media_refresher
         self._text_sender: TextSender = text_sender
+        self._text_editor: TextEditor = text_editor
+        self._message_deleter: MessageDeleter = message_deleter
         self._failure_formatter: FailureFormatter = failure_formatter
         self._file_storage: FileStorage = file_storage
         self._workspace: Workspace = workspace
@@ -78,27 +88,29 @@ class DeliverMedia:
         self._uow: UnitOfWork = uow
 
     async def __call__(self, data: DeliverMediaDTO) -> None:
-        source: SourceMessage = data.result.request.source
+        request: DownloadRequest = data.result.request
+        source: SourceMessage = request.source
 
         # a message sent by mistake and deleted right away gets no reply
         if not await self._message_reader.message_exists(source):
             return
 
         # the reaction stands for the download, the upload shows its own progress
-        if source.shows_progress():
+        if request.shows_progress():
             await self._progress_indicator.hide_progress(source)
 
         try:
             await self._deliver(data.result)
         # a cached file whose message is gone is downloaded again
         except MessageGoneError:
-            if source.shows_progress():
+            if request.shows_progress():
                 await self._progress_indicator.show_progress(source)
 
             await self._download_scheduler.schedule_download(data.result.request)
 
     async def _deliver(self, result: DownloadResult) -> None:
-        source: SourceMessage = result.request.source
+        request: DownloadRequest = result.request
+        source: SourceMessage = request.source
 
         async with self._uow:
             delivered_parts: list[DeliveredPart] = await self._delivered_part_repository.get_all(
@@ -128,7 +140,9 @@ class DeliverMedia:
                 if isinstance(content, Failure):
                     await self._send_failure(request=result.request, part=part, failure=content)
                 else:
-                    cached_files = await self._send_media(source=source, part=part, media=content)
+                    cached_files = await self._send_media(
+                        request=request, part=part, media=content
+                    )
                     stored_files = [
                         convert_stored_media_to_file(item)
                         for item in content
@@ -145,6 +159,9 @@ class DeliverMedia:
                 for stored_file in stored_files:
                     await self._stored_file_repository.save(stored_file)
 
+        if request.replaces_command():
+            await self._finish_command(result)
+
     def _split_parts(
         self, result: DownloadResult
     ) -> list[tuple[StoredMedia | CachedFile, ...] | Failure]:
@@ -154,8 +171,11 @@ class DeliverMedia:
         audio: list[StoredMedia | CachedFile] = [
             media for media in result.media if media.kind == MediaKind.AUDIO
         ]
+        # a command in reply to links reports its failures in its own text
         failures: list[Failure] = (
-            result.failures if result.request.source.reports_failures() else []
+            result.failures
+            if result.request.reports_failures() and not result.request.replaces_command()
+            else []
         )
 
         return [
@@ -163,6 +183,20 @@ class DeliverMedia:
             *batched(audio, self._ALBUM_SIZE, strict=False),
             *failures,
         ]
+
+    async def _finish_command(self, result: DownloadResult) -> None:
+        # the media takes the command's place, and the failures replace its text
+        if not result.failures:
+            await self._message_deleter.delete_message(result.request.source)
+
+            return
+
+        await self._text_editor.edit_text(
+            source=result.request.source,
+            text=self._failure_formatter.format_failures(
+                failures=result.failures, size_limit=result.request.size_limit
+            ),
+        )
 
     async def _send_failure(
         self, *, request: DownloadRequest, part: int, failure: Failure
@@ -177,15 +211,16 @@ class DeliverMedia:
         await self._text_sender.send_text(source=request.source, part=part, text=text, quote=quote)
 
     async def _send_media(
-        self, *, source: SourceMessage, part: int, media: tuple[StoredMedia | CachedFile, ...]
+        self, *, request: DownloadRequest, part: int, media: tuple[StoredMedia | CachedFile, ...]
     ) -> list[CachedFile]:
+        source: SourceMessage = request.source
         files: list[FileId] = [
-            await self._get_file_id(source=source, media=item) for item in media
+            await self._get_file_id(request=request, media=item) for item in media
         ]
 
         try:
             message_ids: list[MessageId] = await self._media_sender.send_media(
-                source=source, part=part, files=files
+                source=source, part=part, files=files, reply_to=request.reply_to
             )
         except FileReferenceExpiredError:
             files = [
@@ -193,7 +228,7 @@ class DeliverMedia:
                 for item, file_id in zip(media, files, strict=True)
             ]
             message_ids = await self._media_sender.send_media(
-                source=source, part=part, files=files
+                source=source, part=part, files=files, reply_to=request.reply_to
             )
 
         return [
@@ -209,7 +244,7 @@ class DeliverMedia:
         ]
 
     async def _get_file_id(
-        self, *, source: SourceMessage, media: StoredMedia | CachedFile
+        self, *, request: DownloadRequest, media: StoredMedia | CachedFile
     ) -> FileId:
         if isinstance(media, CachedFile):
             return media.file_id
@@ -219,10 +254,10 @@ class DeliverMedia:
             await self._file_storage.download(key=media.storage_key, path=path)
 
             return await self._media_uploader.upload_media(
-                chat_id=source.chat_id,
+                chat_id=request.source.chat_id,
                 media=media,
                 path=path,
-                shows_progress=source.shows_progress(),
+                shows_progress=request.shows_progress(),
             )
 
     async def _refresh_file_id(self, cached_file: CachedFile) -> FileId:
