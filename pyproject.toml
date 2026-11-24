@@ -34,6 +34,7 @@ dependencies = [
 # keep-sorted start
 hilot-bot = "hilot.main.bot:main"
 hilot-cookies = "hilot.main.cookies:main"
+hilot-detector = "hilot.main.detector:main"
 hilot-downloader = "hilot.main.downloader:main"
 hilot-login = "hilot.main.login:main"
 hilot-migrate = "hilot.main.migrate:main"

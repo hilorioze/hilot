@@ -54,3 +54,11 @@ http = {host = "127.0.0.1", port = 9102}
 concurrency = 1
 
 http = {host = "127.0.0.1", port = 9103}
+
+[detector]
+# one page attests the checks one by one, the uploads go alongside
+concurrency = 2
+
+http = {host = "127.0.0.1", port = 9105}
+
+browser_url = "http://127.0.0.1:9222"

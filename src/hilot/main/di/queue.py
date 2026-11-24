@@ -7,6 +7,10 @@ from taskiq import AsyncBroker
 from hilot.domain.interfaces.adapters.delivery_scheduler import DeliveryScheduler
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
 from hilot.domain.interfaces.adapters.transcode_scheduler import TranscodeScheduler
+from hilot.domain.interfaces.adapters.watermark_scheduler import (
+    WatermarkCheckScheduler,
+    WatermarkReplyScheduler,
+)
 from hilot.infrastructure.queue.broker import RoutingJetStreamBroker
 from hilot.infrastructure.queue.routes import Route
 from hilot.infrastructure.queue.scheduler import TaskiqScheduler
@@ -37,6 +41,12 @@ class QueueProvider(Provider):
 
     scheduler = provide(
         TaskiqScheduler,
-        provides=AnyOf[DownloadScheduler, TranscodeScheduler, DeliveryScheduler],
+        provides=AnyOf[
+            DownloadScheduler,
+            TranscodeScheduler,
+            DeliveryScheduler,
+            WatermarkCheckScheduler,
+            WatermarkReplyScheduler,
+        ],
         scope=Scope.APP,
     )

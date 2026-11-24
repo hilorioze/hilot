@@ -4,9 +4,10 @@ import mimetypes
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
 from pathlib import Path
-from typing import ClassVar, cast, override
+from typing import Any, ClassVar, cast, override
 
 from pyrogram import Client, types
+from pyrogram.enums import MessageMediaType
 from pyrogram.errors import (
     ChannelPrivate,
     FileReferenceExpired,
@@ -55,23 +56,27 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageMediaReader,
     MessageReader,
     ProgressIndicator,
+    TextEditor,
     TextSender,
     UploadLimitReader,
 )
-from hilot.domain.value_objects.media import FileId, MediaKind, StoredMedia
+from hilot.domain.value_objects.media import AttachedMedia, FileId, MediaKind, StoredMedia
 from hilot.domain.value_objects.message import ChatId, Link, MessageId, SourceMessage
 
 
 class KurigramMessenger(
     ProgressIndicator,
     MessageReader,
+    MessageMediaReader,
     UploadLimitReader,
     MediaUploader,
     MediaSender,
     MediaRefresher,
     TextSender,
+    TextEditor,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
 
@@ -95,6 +100,8 @@ class KurigramMessenger(
         # an official client sends audio files as documents, voice messages have their own action
         MediaKind.AUDIO: SendMessageUploadDocumentAction,
     }
+
+    _UNKNOWN_MIME_TYPE: ClassVar[str] = "application/octet-stream"
 
     # telegram shows a chat action for about 5 seconds, so it's repeated while the upload lasts
     _UPLOAD_ACTION_INTERVAL: ClassVar[float] = 4
@@ -123,6 +130,37 @@ class KurigramMessenger(
             return False
 
         return True
+
+    @override
+    async def read_media(self, *, chat_id: ChatId, message_id: MessageId) -> AttachedMedia | None:
+        message: types.Message = await self._get_message(chat_id=chat_id, message_id=message_id)
+
+        if message.media is None:
+            return None
+
+        # the media types are named like the message attributes holding them, and a poll or a location has no file
+        media: Any = getattr(message, message.media.value)
+
+        if getattr(media, "file_id", None) is None:
+            return None
+
+        return AttachedMedia(
+            file_id=FileId(media.file_id),
+            # telegram keeps every photo as a jpeg, so it has no type of its own
+            mime_type="image/jpeg"
+            if message.media == MessageMediaType.PHOTO
+            else media.mime_type or self._UNKNOWN_MIME_TYPE,
+            size=media.file_size,
+        )
+
+    @override
+    async def download_media(self, *, media: AttachedMedia, directory: Path) -> Path:
+        return Path(
+            cast(
+                str,
+                await self._client.download_media(media.file_id, file_name=directory / "media"),
+            )
+        )
 
     @override
     def get_upload_limit(self) -> int:
@@ -214,6 +252,13 @@ class KurigramMessenger(
                     silent=True,
                 )
             )
+
+    @override
+    async def edit_text(self, *, source: SourceMessage, text: str) -> None:
+        # the text of a media message is its caption
+        await self._client.edit_message_text(
+            chat_id=source.chat_id, message_id=source.message_id, text=text
+        )
 
     async def _save_file_showing_progress(
         self, *, peer: InputPeer, kind: MediaKind, path: Path

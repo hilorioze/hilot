@@ -24,3 +24,11 @@ class BotConfig(WorkerConfig):
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DownloaderConfig(WorkerConfig):
     proxy: SecretStr | None = None
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DetectorConfig(WorkerConfig):
+    # the devtools address of the browser the attestations come from
+    browser_url: str
+
+    proxy: SecretStr | None = None

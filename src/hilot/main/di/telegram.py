@@ -7,8 +7,10 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageMediaReader,
     MessageReader,
     ProgressIndicator,
+    TextEditor,
     TextSender,
     UploadLimitReader,
 )
@@ -58,11 +60,13 @@ class TelegramProvider(Provider):
         provides=AnyOf[
             ProgressIndicator,
             MessageReader,
+            MessageMediaReader,
             UploadLimitReader,
             MediaUploader,
             MediaSender,
             MediaRefresher,
             TextSender,
+            TextEditor,
         ],
         scope=Scope.APP,
     )

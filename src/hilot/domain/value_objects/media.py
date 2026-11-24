@@ -57,6 +57,14 @@ class MediaInfo:
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
+class AttachedMedia:
+    file_id: FileId
+
+    mime_type: str
+    size: int
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class ExtractedMedia:
     media_key: MediaKey
     size: int | None

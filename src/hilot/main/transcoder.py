@@ -42,7 +42,9 @@ async def run() -> None:
         },
     )
 
-    await run_worker(container=container, config=schema.transcoder, task=transcode_media)
+    await run_worker(
+        container=container, config=schema.transcoder, tasks={TRANSCODE_ROUTE: transcode_media}
+    )
 
     await container.close()
 

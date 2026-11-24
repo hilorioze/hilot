@@ -3,31 +3,19 @@ from urllib.parse import urlsplit
 
 from dishka import FromDishka
 from pyrogram import Client, filters
-from pyrogram.enums import ChatType, MessageEntityType
-from pyrogram.types import Chat, Message, WebPage
+from pyrogram.enums import MessageEntityType
+from pyrogram.types import Message, WebPage
 from pyrogram.types.messages_and_media.message import Str
 
 from hilot.application.media.request_download import RequestDownload, RequestDownloadDTO
-from hilot.domain.value_objects.message import AccountId, ChatId, Link, MessageId, SourceMessage
+from hilot.domain.value_objects.message import AccountId, Link
 from hilot.presentation.telegram.filters import BotChatFilter
+from hilot.presentation.telegram.parsing import parse_source
 from hilot.presentation.telegram.router import Router
 
 router: Router = Router()
 
 _LINK_TYPES: set[MessageEntityType] = {MessageEntityType.URL, MessageEntityType.TEXT_LINK}
-
-
-def _parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
-    # kurigram types every field as optional, telegram sends each message with its chat
-    chat: Chat = cast(Chat, message.chat)
-
-    return SourceMessage(
-        account_id=account_id,
-        chat_id=ChatId(cast(int, chat.id)),
-        message_id=MessageId(message.id),
-        is_private=chat.type == ChatType.PRIVATE,
-        is_saved_messages=chat.id == account_id,
-    )
 
 
 def _parse_links(message: Message) -> list[Link]:
@@ -88,7 +76,7 @@ async def request_download(
 ) -> None:
     await interactor(
         RequestDownloadDTO(
-            source=_parse_source(message=message, account_id=account_id),
+            source=parse_source(message=message, account_id=account_id),
             links=_parse_links(message),
         )
     )

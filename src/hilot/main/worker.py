@@ -28,14 +28,16 @@ async def run_worker(
     *,
     container: AsyncContainer,
     config: WorkerConfig,
-    task: Callable[..., Coroutine[Any, Any, None]],
+    tasks: dict[Route, Callable[..., Coroutine[Any, Any, None]]],
 ) -> None:
     broker: AsyncBroker = await container.get(AsyncBroker)
-    route: Route = await container.get(Route)
 
     setup_dishka(container=container, broker=broker)
     broker.add_middlewares(FailureMetricMiddleware())
-    broker.register_task(task, task_name=route.task_name)
+
+    # the routes share the subject the broker consumes, a message names its task
+    for route, task in tasks.items():
+        broker.register_task(task, task_name=route.task_name)
 
     receiver: Receiver = Receiver(
         broker=broker,

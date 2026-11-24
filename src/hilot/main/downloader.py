@@ -55,7 +55,9 @@ async def run() -> None:
         },
     )
 
-    await run_worker(container=container, config=schema.downloader, task=download_media)
+    await run_worker(
+        container=container, config=schema.downloader, tasks={DOWNLOAD_ROUTE: download_media}
+    )
 
     await container.close()
 

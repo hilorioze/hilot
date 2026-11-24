@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from hilot.domain.value_objects.message import AccountId
 
@@ -17,6 +17,9 @@ DOWNLOAD_ROUTE: Route = Route(
 TRANSCODE_ROUTE: Route = Route(
     task_name="transcode_media", subject="hilot.transcode", durable="transcode"
 )
+WATERMARK_ROUTE: Route = Route(
+    task_name="check_watermark", subject="hilot.watermark", durable="watermark"
+)
 
 
 def get_delivery_route(account_id: AccountId) -> Route:
@@ -26,3 +29,8 @@ def get_delivery_route(account_id: AccountId) -> Route:
         subject=f"hilot.delivery.{account_id}",
         durable=f"delivery-{account_id}",
     )
+
+
+def get_watermark_reply_route(account_id: AccountId) -> Route:
+    # only the account can edit its command, so the reply goes through its delivery
+    return replace(get_delivery_route(account_id), task_name="reply_watermark_check")

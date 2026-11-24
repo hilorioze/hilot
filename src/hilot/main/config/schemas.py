@@ -7,8 +7,9 @@ from .database import DatabaseConfig
 from .disk import DiskConfig
 from .nats import NatsConfig
 from .s3 import S3Config
+from .synthid import SynthIdConfig
 from .telegram import TelegramConfig
-from .worker import BotConfig, DownloaderConfig, WorkerConfig
+from .worker import BotConfig, DetectorConfig, DownloaderConfig, WorkerConfig
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -36,6 +37,14 @@ class DownloaderSchema:
 class TranscoderSchema:
     transcoder: WorkerConfig
     disk: DiskConfig
+    nats: NatsConfig
+    s3: S3Config
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DetectorSchema:
+    detector: DetectorConfig
+    synthid: SynthIdConfig
     nats: NatsConfig
     s3: S3Config
 
