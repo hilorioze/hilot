@@ -24,7 +24,7 @@ from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.media_extractor import Extraction, MediaExtractor
 from hilot.domain.value_objects.cookie import Cookie
 from hilot.domain.value_objects.media import ExtractedMedia, MediaKey
-from hilot.infrastructure.metrics import LOGIN_REQUIRED
+from hilot.infrastructure.metrics import EXTRACTIONS, LOGIN_REQUIRED, MEDIA_UNAVAILABLE
 
 from .cookies import fill_cookie_jar, read_cookie_jar
 
@@ -39,7 +39,7 @@ _EXTRACTORS: list[type[InfoExtractor]] = [
 class YtDlpLinkMatcher(LinkMatcher):
     @override
     def matches(self, url: str) -> bool:
-        return _is_supported(url)
+        return _find_extractor(url) is not None
 
 
 class YtDlpMediaExtractor(MediaExtractor):
@@ -52,8 +52,13 @@ class YtDlpMediaExtractor(MediaExtractor):
     async def extract(
         self, *, url: str, cookies: list[Cookie], directory: Path, size_limit: int
     ) -> AsyncGenerator[_YtDlpExtraction]:
-        if not _is_supported(url):
+        found: type[InfoExtractor] | None = _find_extractor(url)
+
+        if found is None:
             raise UnsupportedLinkError
+
+        extractor_name: str = found.ie_key()
+        EXTRACTIONS.labels(extractor=extractor_name).inc()
 
         with YoutubeDL(
             {
@@ -78,7 +83,7 @@ class YtDlpMediaExtractor(MediaExtractor):
 
             fill_cookie_jar(jar=ydl.cookiejar, cookies=cookies)
 
-            with _translate_errors():
+            with _translate_errors(extractor_name):
                 # the stubs type the info without the fields yt-dlp adds to it
                 info: dict[str, Any] | None = cast(
                     dict[str, Any] | None,
@@ -96,7 +101,9 @@ class YtDlpMediaExtractor(MediaExtractor):
             if self._video_required and all(info.get("vcodec") == "none" for info in infos):
                 raise NoMediaError
 
-            yield _YtDlpExtraction(ydl=ydl, infos=infos, size_limit=size_limit)
+            yield _YtDlpExtraction(
+                ydl=ydl, infos=infos, size_limit=size_limit, extractor_name=extractor_name
+            )
 
     @classmethod
     def _list_infos(cls, info: dict[str, Any]) -> list[dict[str, Any]]:
@@ -108,12 +115,15 @@ class YtDlpMediaExtractor(MediaExtractor):
 
 
 class _YtDlpExtraction(Extraction):
-    def __init__(self, *, ydl: YoutubeDL, infos: list[dict[str, Any]], size_limit: int) -> None:
+    def __init__(
+        self, *, ydl: YoutubeDL, infos: list[dict[str, Any]], size_limit: int, extractor_name: str
+    ) -> None:
         self._ydl: YoutubeDL = ydl
         self._infos: dict[ExtractedMedia, dict[str, Any]] = {
             self._create_entry(info): info for info in infos
         }
         self._size_limit: int = size_limit
+        self._extractor_name: str = extractor_name
         self._cancelled: threading.Event = threading.Event()
 
         ydl.add_progress_hook(self._check_progress)
@@ -132,7 +142,7 @@ class _YtDlpExtraction(Extraction):
     @asynccontextmanager
     async def download(self, entry: ExtractedMedia) -> AsyncGenerator[Path]:
         try:
-            with _translate_errors():
+            with _translate_errors(self._extractor_name):
                 info: dict[str, Any] = cast(
                     dict[str, Any],
                     await asyncio.to_thread(
@@ -173,20 +183,21 @@ class _YtDlpExtraction(Extraction):
         )
 
 
-def _is_supported(url: str) -> bool:
-    return any(extractor.suitable(url) for extractor in _EXTRACTORS)
+# yt-dlp takes a link with the first extractor suitable for it
+def _find_extractor(url: str) -> type[InfoExtractor] | None:
+    return next((extractor for extractor in _EXTRACTORS if extractor.suitable(url)), None)
 
 
 @contextmanager
-def _translate_errors() -> Generator[None]:
+def _translate_errors(extractor_name: str) -> Generator[None]:
     try:
         yield
     except DownloadError as error:
         # yt-dlp reports its errors as a `DownloadError` with the original error inside
-        raise _translate_error(error.exc_info[1]) from error
+        raise _translate_error(error=error.exc_info[1], extractor_name=extractor_name) from error
 
 
-def _translate_error(error: BaseException | None) -> Exception:
+def _translate_error(*, error: BaseException | None, extractor_name: str) -> Exception:
     match error:
         # a short link to a page no extractor takes gives a `DownloadError` without an exception
         case None | UnsupportedError():
@@ -197,8 +208,10 @@ def _translate_error(error: BaseException | None) -> Exception:
         case ExtractorError() if error.orig_msg.startswith("No video formats found"):
             return NoMediaError()
         case ExtractorError() if "--cookies" in error.orig_msg:
-            LOGIN_REQUIRED.labels(extractor=error.ie).inc()
+            LOGIN_REQUIRED.labels(extractor=extractor_name).inc()
 
             return LoginRequiredError()
         case _:
+            MEDIA_UNAVAILABLE.labels(extractor=extractor_name).inc()
+
             return MediaUnavailableError()

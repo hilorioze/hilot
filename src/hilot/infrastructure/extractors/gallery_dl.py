@@ -25,7 +25,7 @@ from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.media_extractor import Extraction, MediaExtractor
 from hilot.domain.value_objects.cookie import Cookie
 from hilot.domain.value_objects.media import ExtractedMedia, MediaKey
-from hilot.infrastructure.metrics import LOGIN_REQUIRED
+from hilot.infrastructure.metrics import EXTRACTIONS, LOGIN_REQUIRED, MEDIA_UNAVAILABLE
 
 from .cookies import fill_cookie_jar, read_cookie_jar
 
@@ -57,6 +57,8 @@ class GalleryDlMediaExtractor(MediaExtractor):
         if root is None:
             raise UnsupportedLinkError
 
+        EXTRACTIONS.labels(extractor=root.category).inc()
+
         # the files go to the workspace instead of `./gallery-dl/`, and the children get it from their parent
         root._parentdir = f"{directory}{os.sep}"  # noqa: SLF001
 
@@ -79,6 +81,7 @@ class _GalleryDlExtraction(Extraction):
             self._create_entry(file): file for file in job.files
         }
         self._progress: _DownloadProgress = _DownloadProgress(size_limit=size_limit)
+        self._extractor_name: str = job.extractor.category
 
     @property
     @override
@@ -102,6 +105,10 @@ class _GalleryDlExtraction(Extraction):
         except asyncio.CancelledError:
             # a thread can't be cancelled, so the progress stops the download
             self._progress.cancelled.set()
+            raise
+        except MediaUnavailableError:
+            # a file hosted elsewhere still counts for the site of the post
+            MEDIA_UNAVAILABLE.labels(extractor=self._extractor_name).inc()
             raise
 
         try:
@@ -260,5 +267,7 @@ def _translate_status(*, status: int, errors: list[ExtractionError], root: Extra
         LOGIN_REQUIRED.labels(extractor=root.category).inc()
 
         return LoginRequiredError()
+
+    MEDIA_UNAVAILABLE.labels(extractor=root.category).inc()
 
     return MediaUnavailableError()
