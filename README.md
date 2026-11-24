@@ -25,7 +25,7 @@ A link in an outgoing or a private message gets the media behind it as a reply.
 
 ### SynthID check
 
-`.synth` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and puts the verdict in place of the command.
+`.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and puts the verdict in place of the command.
 
 ## Configuration
 

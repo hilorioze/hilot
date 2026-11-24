@@ -16,8 +16,11 @@ class SourceMessage:
     is_saved_messages: bool
 
     # reactions in saved messages are tags available only with premium
+    def allows_reactions(self) -> bool:
+        return not self.is_saved_messages
+
     def shows_progress(self) -> bool:
-        return self.is_private and not self.is_saved_messages
+        return self.is_private and self.allows_reactions()
 
     def reports_failures(self) -> bool:
         return self.is_private

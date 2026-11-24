@@ -2,7 +2,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
-from hilot.domain.interfaces.adapters.messenger import MessageMediaReader, TextEditor
+from hilot.domain.interfaces.adapters.messenger import (
+    MessageMediaReader,
+    ProgressIndicator,
+    TextEditor,
+)
 from hilot.domain.interfaces.adapters.watermark_detector import DetectableMediaMatcher
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
 from hilot.domain.interfaces.adapters.watermark_scheduler import WatermarkCheckScheduler
@@ -27,6 +31,7 @@ class RequestWatermarkCheck:
         media_reader: MessageMediaReader,
         media_matcher: DetectableMediaMatcher,
         text_editor: TextEditor,
+        progress_indicator: ProgressIndicator,
         watermark_formatter: WatermarkFormatter,
         workspace: Workspace,
         file_storage: FileStorage,
@@ -35,6 +40,7 @@ class RequestWatermarkCheck:
         self._media_reader: MessageMediaReader = media_reader
         self._media_matcher: DetectableMediaMatcher = media_matcher
         self._text_editor: TextEditor = text_editor
+        self._progress_indicator: ProgressIndicator = progress_indicator
         self._watermark_formatter: WatermarkFormatter = watermark_formatter
         self._workspace: Workspace = workspace
         self._file_storage: FileStorage = file_storage
@@ -56,6 +62,10 @@ class RequestWatermarkCheck:
             await self._reply_failure(source=data.source, failure=failure)
 
             return
+
+        # the owner calls the command on purpose, so unlike a link it shows progress in groups too
+        if data.source.allows_reactions():
+            await self._progress_indicator.show_progress(data.source)
 
         async with self._workspace.create() as directory:
             path: Path = await self._media_reader.download_media(media=media, directory=directory)

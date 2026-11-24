@@ -13,6 +13,7 @@ from pyrogram.errors import (
     FileReferenceExpired,
     MessageNotModified,
     RandomIdDuplicate,
+    ReactionInvalid,
 )
 from pyrogram.file_id import FileId as DecodedFileId
 from pyrogram.file_id import FileType
@@ -111,8 +112,9 @@ class KurigramMessenger(
 
     @override
     async def show_progress(self, source: SourceMessage) -> None:
-        # the owner can put the reaction on or take it off from another client, and telegram refuses an unchanged one
-        with suppress(MessageNotModified):
+        # the owner can put the reaction on or take it off from another client, and telegram refuses an unchanged one;
+        # a group can leave the reaction out of the ones it allows
+        with suppress(MessageNotModified, ReactionInvalid):
             await self._client.send_reaction(
                 chat_id=source.chat_id, message_id=source.message_id, emoji=self._PROGRESS_REACTION
             )

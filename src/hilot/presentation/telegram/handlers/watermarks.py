@@ -22,7 +22,7 @@ def _get_media_message_id(message: Message) -> MessageId:
 
 
 # the command checks the media it replies to, or the one it's the caption of
-@router.on_message(filters.outgoing & filters.command("synth", prefixes="."))
+@router.on_message(filters.outgoing & filters.command(["synth", "synthid"], prefixes="."))
 async def request_watermark_check(
     _: Client,
     message: Message,
