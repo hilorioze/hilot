@@ -2,6 +2,16 @@
 
 A multi-functional Telegram userbot.
 
+## Features
+
+### Downloads
+
+A link in an outgoing or a private message gets the media behind it as a reply.
+
+### SynthID check
+
+`.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and puts the verdict in place of the command.
+
 ## Running
 
 - `hilot-bot`: the Telegram client
@@ -16,16 +26,6 @@ The commands share PostgreSQL, [NATS](https://nats.io/) with JetStream and an S3
 
 - with [devenv](https://devenv.sh/): `devenv up` starts PostgreSQL, NATS and [Garage](https://garagehq.deuxfleurs.fr/) and migrates the database; then `hilot-login` and the workers in `devenv shell`
 - with Nix: `nix shell github:hilorioze/hilot`
-
-## Features
-
-### Downloads
-
-A link in an outgoing or a private message gets the media behind it as a reply.
-
-### SynthID check
-
-`.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and puts the verdict in place of the command.
 
 ## Configuration
 
