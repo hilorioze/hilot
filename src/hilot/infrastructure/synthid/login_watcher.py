@@ -85,6 +85,10 @@ class SynthIDLoginWatcher:
             session_id=session_id,
         )
 
+        # chrome holds a popup, like the one of signing in, until its debugger lets it go
+        if event["waitingForDebugger"]:
+            await self._cdp.send("Runtime.runIfWaitingForDebugger", session_id=session_id)
+
     async def _handle_detach(self, event: dict[str, Any]) -> None:
         session_id: str = event["sessionId"]
 
