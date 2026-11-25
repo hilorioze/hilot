@@ -85,8 +85,7 @@ class RequestDownload:
             [
                 link
                 for link in data.links
-                # the preview plays the video by itself, unless the file is asked for
-                if preview is None or not preview.plays_video or link.url != preview.url
+                if not await self._plays_in_preview(link=link, preview=preview)
             ]
         )
 
@@ -120,3 +119,11 @@ class RequestDownload:
             await self._progress_indicator.show_progress(data.source)
 
         await self._download_scheduler.schedule_download(request)
+
+    # the preview plays the video by itself, unless the file is asked for
+    async def _plays_in_preview(self, *, link: Link, preview: LinkPreview | None) -> bool:
+        if preview is None or not preview.plays_video or preview.url is None:
+            return False
+
+        # telegram keeps the preview under its own form of the link: without `www.`, with sorted parameters and no tracking ones
+        return await self._link_preview_reader.read_preview_url(link.url) == preview.url

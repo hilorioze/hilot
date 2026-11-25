@@ -24,6 +24,7 @@ from pyrogram.raw.base.input_peer import InputPeer
 from pyrogram.raw.base.message_entity import MessageEntity
 from pyrogram.raw.base.message_media import MessageMedia
 from pyrogram.raw.functions.messages.edit_message import EditMessage
+from pyrogram.raw.functions.messages.get_web_page_preview import GetWebPagePreview
 from pyrogram.raw.functions.messages.send_media import SendMedia
 from pyrogram.raw.functions.messages.send_message import SendMessage
 from pyrogram.raw.functions.messages.send_multi_media import SendMultiMedia
@@ -44,6 +45,7 @@ from pyrogram.raw.types.message_entity_text_url import MessageEntityTextUrl
 from pyrogram.raw.types.message_media_document import MessageMediaDocument
 from pyrogram.raw.types.message_media_photo import MessageMediaPhoto
 from pyrogram.raw.types.message_media_web_page import MessageMediaWebPage
+from pyrogram.raw.types.messages.web_page_preview import WebPagePreview
 from pyrogram.raw.types.photo import Photo
 from pyrogram.raw.types.send_message_upload_document_action import (
     SendMessageUploadDocumentAction,
@@ -52,6 +54,7 @@ from pyrogram.raw.types.send_message_upload_photo_action import SendMessageUploa
 from pyrogram.raw.types.send_message_upload_video_action import SendMessageUploadVideoAction
 from pyrogram.raw.types.update_message_id import UpdateMessageID
 from pyrogram.raw.types.updates_t import Updates
+from pyrogram.raw.types.web_page import WebPage
 from pyrogram.raw.types.web_page_pending import WebPagePending
 from pyrogram.utils import get_input_media_from_file_id, get_raw_peer_id
 
@@ -185,9 +188,21 @@ class KurigramMessenger(
             url=web_page.url,
             # kurigram parses a preview telegram still builds as one without media
             is_pending=isinstance(cast(MessageMediaWebPage, web_page.raw).webpage, WebPagePending),
-            plays_video=bool(web_page.prefer_large_media)
-            and (web_page.video is not None or web_page.animation is not None),
+            # telegram desktop and android draw a preview with a video large unless the sender made it small
+            plays_video=(web_page.video is not None or web_page.animation is not None)
+            and not web_page.prefer_small_media,
         )
+
+    @override
+    async def read_preview_url(self, url: str) -> str | None:
+        preview: WebPagePreview = await self._client.invoke(GetWebPagePreview(message=url))
+
+        if not isinstance(preview.media, MessageMediaWebPage) or not isinstance(
+            preview.media.webpage, WebPage
+        ):
+            return None
+
+        return preview.media.webpage.url
 
     @override
     async def read_media(self, location: MediaLocation) -> AttachedMedia | None:

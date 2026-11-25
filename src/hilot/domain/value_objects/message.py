@@ -79,7 +79,7 @@ class LinkPreview:
 
     is_pending: bool
 
-    # only an enlarged preview plays its video on every client: telegram desktop opens the site from a small one
+    # only a large preview plays its video on every client: telegram desktop opens the site from a small one
     plays_video: bool
 
 

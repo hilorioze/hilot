@@ -30,6 +30,9 @@ class MessageReader(Protocol):
 class LinkPreviewReader(Protocol):
     async def read_link_preview(self, source: SourceMessage) -> LinkPreview | None: ...
 
+    # the url telegram gives the preview of a link, `None` when it has none
+    async def read_preview_url(self, url: str) -> str | None: ...
+
 
 class MessageMediaReader(Protocol):
     async def read_media(self, location: MediaLocation) -> AttachedMedia | None: ...
