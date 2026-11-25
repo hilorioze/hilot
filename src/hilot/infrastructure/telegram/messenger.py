@@ -1,7 +1,7 @@
 import asyncio
 import io
 import mimetypes
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager, suppress
 from pathlib import Path
 from typing import Any, ClassVar, cast, override
@@ -209,10 +209,35 @@ class KurigramMessenger(
         message: types.Message = await self._get_message(
             chat_id=location.chat_id, message_id=location.message_id
         )
-        holder: types.Message | types.ExternalReplyInfo | None = (
+
+        return self._read_attached_media(
             message.external_reply if location.is_external_reply else message
         )
 
+    @override
+    async def read_album(self, location: MediaLocation) -> list[AttachedMedia]:
+        message: types.Message = await self._get_message(
+            chat_id=location.chat_id, message_id=location.message_id
+        )
+
+        # a reply from another chat carries a copy of one media, without its album
+        messages: Sequence[types.Message | types.ExternalReplyInfo | None] = (
+            [message.external_reply]
+            if location.is_external_reply
+            else await self._client.get_media_group(
+                chat_id=location.chat_id, message_id=location.message_id
+            )
+            if message.media_group_id is not None
+            else [message]
+        )
+
+        return [
+            media for item in messages if (media := self._read_attached_media(item)) is not None
+        ]
+
+    def _read_attached_media(
+        self, holder: types.Message | types.ExternalReplyInfo | None
+    ) -> AttachedMedia | None:
         if holder is None or holder.media is None:
             return None
 

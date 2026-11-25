@@ -37,6 +37,9 @@ class LinkPreviewReader(Protocol):
 class MessageMediaReader(Protocol):
     async def read_media(self, location: MediaLocation) -> AttachedMedia | None: ...
 
+    # the media of the album the message is in, or its own media alone
+    async def read_album(self, location: MediaLocation) -> list[AttachedMedia]: ...
+
     async def download_media(self, *, media: AttachedMedia, directory: Path) -> Path: ...
 
 

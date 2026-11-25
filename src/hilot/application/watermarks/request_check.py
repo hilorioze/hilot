@@ -11,7 +11,10 @@ from hilot.domain.interfaces.adapters.messenger import (
 )
 from hilot.domain.interfaces.adapters.watermark_detector import DetectableMediaMatcher
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
-from hilot.domain.interfaces.adapters.watermark_scheduler import WatermarkCheckScheduler
+from hilot.domain.interfaces.adapters.watermark_scheduler import (
+    WatermarkCheckScheduler,
+    WatermarkReplyScheduler,
+)
 from hilot.domain.interfaces.adapters.workspace import Workspace
 from hilot.domain.value_objects.download import DownloadPurpose, DownloadRequest, DownloadTrigger
 from hilot.domain.value_objects.media import AttachedMedia, StorageKey
@@ -28,6 +31,8 @@ from hilot.domain.value_objects.watermark import (
     MediaLabel,
     WatermarkCheckRequest,
     WatermarkFailure,
+    WatermarkReply,
+    WatermarkResult,
     WatermarkTarget,
 )
 
@@ -38,7 +43,7 @@ from .media import find_media_failure
 class RequestWatermarkCheckDTO:
     source: SourceMessage
 
-    # a command with links of its own checks their media, one without them the media it replies to or else the links there
+    # a command with links of its own checks their media, one without them the media it replies to with the rest of its album, or else the links there
     media_location: MediaLocation | None
     links: list[Link]
 
@@ -57,6 +62,7 @@ class RequestWatermarkCheck:
         file_storage: FileStorage,
         download_scheduler: DownloadScheduler,
         check_scheduler: WatermarkCheckScheduler,
+        reply_scheduler: WatermarkReplyScheduler,
     ) -> None:
         self._media_reader: MessageMediaReader = media_reader
         self._media_matcher: DetectableMediaMatcher = media_matcher
@@ -68,15 +74,16 @@ class RequestWatermarkCheck:
         self._file_storage: FileStorage = file_storage
         self._download_scheduler: DownloadScheduler = download_scheduler
         self._check_scheduler: WatermarkCheckScheduler = check_scheduler
+        self._reply_scheduler: WatermarkReplyScheduler = reply_scheduler
 
     async def __call__(self, data: RequestWatermarkCheckDTO) -> None:
-        media: AttachedMedia | None = (
-            await self._media_reader.read_media(data.media_location)
+        media: list[AttachedMedia] = (
+            await self._media_reader.read_album(data.media_location)
             if data.media_location is not None
-            else None
+            else []
         )
 
-        if media is not None:
+        if media:
             await self._check_media(source=data.source, media=media)
 
             return
@@ -102,36 +109,55 @@ class RequestWatermarkCheck:
             )
         )
 
-    async def _check_media(self, *, source: SourceMessage, media: AttachedMedia) -> None:
-        failure: WatermarkFailure | None = find_media_failure(
-            media_matcher=self._media_matcher, mime_type=media.mime_type, size=media.size
-        )
+    async def _check_media(self, *, source: SourceMessage, media: list[AttachedMedia]) -> None:
+        accepted: list[tuple[MediaLabel, AttachedMedia]] = []
+        failures: list[WatermarkResult] = []
 
-        if failure is not None:
-            await self._reply_failure(source=source, failure=failure)
+        for position, item in enumerate(media, start=1):
+            # a media alone needs no name, the media of an album go by their place in it
+            label: MediaLabel = (
+                MediaLabel(link=None, position=position) if len(media) > 1 else MediaLabel.empty()
+            )
+            failure: WatermarkFailure | None = find_media_failure(
+                media_matcher=self._media_matcher, mime_type=item.mime_type, size=item.size
+            )
+
+            if failure is None:
+                accepted.append((label, item))
+            else:
+                failures.append(WatermarkResult(label=label, outcome=failure))
+
+        # the media the detector can't take are answered without a check
+        if not accepted:
+            await self._reply_scheduler.schedule_reply(
+                WatermarkReply(source=source, results=failures)
+            )
 
             return
 
         await self._show_progress(source)
 
-        async with self._workspace.create() as directory:
-            path: Path = await self._media_reader.download_media(media=media, directory=directory)
-            storage_key: StorageKey = await self._file_storage.upload(path)
-
         await self._check_scheduler.schedule_check(
             WatermarkCheckRequest(
                 source=source,
                 targets=[
-                    WatermarkTarget(
-                        storage_key=storage_key,
-                        mime_type=media.mime_type,
-                        size=media.size,
-                        is_shared=False,
-                        label=MediaLabel.empty(),
-                    )
+                    await self._store_media(label=label, media=item) for label, item in accepted
                 ],
-                failures=[],
+                failures=failures,
             )
+        )
+
+    async def _store_media(self, *, label: MediaLabel, media: AttachedMedia) -> WatermarkTarget:
+        async with self._workspace.create() as directory:
+            path: Path = await self._media_reader.download_media(media=media, directory=directory)
+            storage_key: StorageKey = await self._file_storage.upload(path)
+
+        return WatermarkTarget(
+            storage_key=storage_key,
+            mime_type=media.mime_type,
+            size=media.size,
+            is_shared=False,
+            label=label,
         )
 
     # the command is called on purpose, so unlike a link it shows progress in groups too
