@@ -19,6 +19,7 @@ dependencies = [
     "dature[toml]>=1.6.4",
     "dishka>=1.10.1",
     "gallery-dl>=1.32.21",
+    "groq>=1.7.0",
     "kurigram[fast,qrcode]>=2.2.27",
     "prometheus-client>=0.26.0",
     "secretspec>=0.21.1",
@@ -39,6 +40,7 @@ hilot-downloader = "hilot.main.downloader:main"
 hilot-login = "hilot.main.login:main"
 hilot-migrate = "hilot.main.migrate:main"
 hilot-transcoder = "hilot.main.transcoder:main"
+hilot-transcriber = "hilot.main.transcriber:main"
 # keep-sorted end
 
 # uv locks no build systems, so uv2nix needs them for the sdists it builds: pyaes has no wheel

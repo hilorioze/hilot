@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import io
 import mimetypes
 from collections.abc import Generator
 from contextlib import contextmanager, suppress
@@ -73,6 +74,8 @@ from hilot.domain.interfaces.adapters.messenger import (
     MessageReader,
     ProgressIndicator,
     TextEditor,
+    TextFileReplier,
+    TextLimitReader,
     TextReplier,
     TextSender,
     UploadLimitReader,
@@ -102,6 +105,7 @@ class KurigramMessenger(
     MessageMediaReader,
     UploadLimitReader,
     CaptionLimitReader,
+    TextLimitReader,
     MediaUploader,
     MediaSender,
     MediaAttacher,
@@ -110,6 +114,7 @@ class KurigramMessenger(
     MessageLinkReader,
     TextEditor,
     TextReplier,
+    TextFileReplier,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
 
@@ -231,6 +236,11 @@ class KurigramMessenger(
     def get_caption_limit(self) -> int:
         # `caption_length_limit_default` and `caption_length_limit_premium` of telegram's app config
         return 4096 if self._client.me and self._client.me.is_premium else 1024
+
+    @override
+    def get_text_limit(self) -> int:
+        # `message_length_max` of telegram's app config, the same with premium
+        return 4096
 
     @override
     async def upload_media(
@@ -374,6 +384,28 @@ class KurigramMessenger(
                     random_id=self._get_random_id(source=source, part=self._ANSWER_PART, index=0),
                     reply_to=self._create_reply_to(message_id=source.message_id, quote=None),
                     entities=self._create_entities(text),
+                    silent=True,
+                )
+            )
+
+    @override
+    async def reply_text_file(self, *, source: SourceMessage, name: str, text: str) -> None:
+        file: io.BytesIO = io.BytesIO(text.encode())
+        file.name = name
+
+        # a redelivered answer finds itself already sent
+        with suppress(RandomIdDuplicate):
+            await self._client.invoke(
+                SendMedia(
+                    peer=await self._resolve_peer(source.chat_id),
+                    media=InputMediaUploadedDocument(
+                        file=cast(InputFile, await self._client.save_file(file)),
+                        mime_type="text/plain",
+                        attributes=[DocumentAttributeFilename(file_name=name)],
+                    ),
+                    message="",
+                    random_id=self._get_random_id(source=source, part=self._ANSWER_PART, index=0),
+                    reply_to=self._create_reply_to(message_id=source.message_id, quote=None),
                     silent=True,
                 )
             )

@@ -8,6 +8,8 @@ from hilot.application.check_ins.check_in import RunCheckIn
 from hilot.application.media.await_preview import AwaitLinkPreview
 from hilot.application.media.deliver import DeliverMedia
 from hilot.application.media.request_download import RequestDownload
+from hilot.application.transcriptions.reply import ReplyTranscription
+from hilot.application.transcriptions.request import RequestTranscription
 from hilot.application.watermarks.reply import ReplyWatermarkCheck
 from hilot.application.watermarks.request_check import RequestWatermarkCheck
 from hilot.domain.value_objects.check_in import CheckIn
@@ -16,11 +18,13 @@ from hilot.infrastructure.queue.routes import (
     Route,
     get_delivery_route,
     get_preview_wait_route,
+    get_transcription_reply_route,
     get_watermark_reply_route,
 )
 from hilot.infrastructure.telegram.authorization import Authorization
 from hilot.presentation.schedule.check_ins import run_check_ins
 from hilot.presentation.taskiq.media import await_link_preview, deliver_media
+from hilot.presentation.taskiq.transcriptions import reply_transcription
 from hilot.presentation.taskiq.watermarks import reply_watermark_check
 
 from .config.database import DatabaseConfig
@@ -52,6 +56,8 @@ class _InteractorProvider(Provider):
         DeliverMedia,
         RequestWatermarkCheck,
         ReplyWatermarkCheck,
+        RequestTranscription,
+        ReplyTranscription,
         RunCheckIn,
     )
 
@@ -111,6 +117,7 @@ async def run() -> None:
                 get_preview_wait_route(account_id): await_link_preview,
                 get_delivery_route(account_id): deliver_media,
                 get_watermark_reply_route(account_id): reply_watermark_check,
+                get_transcription_reply_route(account_id): reply_transcription,
             },
         )
 

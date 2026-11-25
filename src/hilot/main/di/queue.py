@@ -8,6 +8,10 @@ from hilot.domain.interfaces.adapters.delivery_scheduler import DeliverySchedule
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
 from hilot.domain.interfaces.adapters.preview_wait_scheduler import PreviewWaitScheduler
 from hilot.domain.interfaces.adapters.transcode_scheduler import TranscodeScheduler
+from hilot.domain.interfaces.adapters.transcription_scheduler import (
+    TranscriptionReplyScheduler,
+    TranscriptionScheduler,
+)
 from hilot.domain.interfaces.adapters.watermark_scheduler import (
     WatermarkCheckScheduler,
     WatermarkReplyScheduler,
@@ -49,6 +53,8 @@ class QueueProvider(Provider):
             DeliveryScheduler,
             WatermarkCheckScheduler,
             WatermarkReplyScheduler,
+            TranscriptionScheduler,
+            TranscriptionReplyScheduler,
         ],
         scope=Scope.APP,
     )

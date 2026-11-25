@@ -49,6 +49,10 @@ class CaptionLimitReader(Protocol):
     def get_caption_limit(self) -> int: ...
 
 
+class TextLimitReader(Protocol):
+    def get_text_limit(self) -> int: ...
+
+
 class MediaSender(Protocol):
     async def send_media(
         self, *, source: SourceMessage, part: int, media: list[OutgoingMedia], reply_to: MessageId
@@ -80,6 +84,11 @@ class TextEditor(Protocol):
 
 class TextReplier(Protocol):
     async def reply_text(self, *, source: SourceMessage, text: RichText) -> None: ...
+
+
+# a text too long for a message goes as a file
+class TextFileReplier(Protocol):
+    async def reply_text_file(self, *, source: SourceMessage, name: str, text: str) -> None: ...
 
 
 # the answer goes under the owner's command, so that its text stays in sight, and in reply to a command of the other side of a private chat

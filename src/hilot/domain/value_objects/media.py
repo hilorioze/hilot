@@ -83,6 +83,9 @@ class AttachedMedia:
     mime_type: str
     size: int
 
+    def may_hold_speech(self) -> bool:
+        return self.mime_type.startswith(("audio/", "video/"))
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ExtractedMedia:

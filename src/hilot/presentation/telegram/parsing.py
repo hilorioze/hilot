@@ -7,6 +7,7 @@ from pyrogram.types import Chat, Message
 from hilot.domain.value_objects.message import (
     AccountId,
     ChatId,
+    MediaLocation,
     MessageId,
     SourceMessage,
 )
@@ -33,3 +34,31 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         # kurigram returns naive dates in the local time zone
         sent_at=cast(datetime, message.date).astimezone(UTC),
     )
+
+
+# a command takes the media of its own message, of the one it replies to, or the one telegram copies into a reply from another chat
+def parse_media_location(message: Message) -> MediaLocation:
+    # kurigram types every field as optional, telegram sends each message with its chat
+    own: MediaLocation = MediaLocation(
+        chat_id=ChatId(cast(int, cast(Chat, message.chat).id)),
+        message_id=MessageId(message.id),
+        is_external_reply=False,
+    )
+    reply: Message | None = message.reply_to_message
+
+    if message.media is not None:
+        return own
+
+    if reply is not None:
+        return MediaLocation(
+            chat_id=ChatId(cast(int, cast(Chat, reply.chat).id)),
+            message_id=MessageId(reply.id),
+            is_external_reply=False,
+        )
+
+    if message.external_reply is not None:
+        return MediaLocation(
+            chat_id=own.chat_id, message_id=own.message_id, is_external_reply=True
+        )
+
+    return own

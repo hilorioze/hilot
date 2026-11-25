@@ -1,5 +1,3 @@
-import math
-from datetime import timedelta
 from typing import ClassVar, override
 
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
@@ -12,6 +10,8 @@ from hilot.domain.value_objects.watermark import (
     WatermarkSegment,
     WatermarkVerdict,
 )
+
+from .units import format_wait
 
 
 class ChatWatermarkFormatter(WatermarkFormatter):
@@ -46,7 +46,7 @@ class ChatWatermarkFormatter(WatermarkFormatter):
             return self._FAILURE_TEXTS[outcome]
 
         if isinstance(outcome, WatermarkQuotaExceeded):
-            return f"out of synthid checks, try again in {self._format_wait(outcome.retry_after)}"
+            return f"out of synthid checks, try again in {format_wait(outcome.retry_after)}"
 
         match outcome.verdict:
             case WatermarkVerdict.DETECTED:
@@ -101,12 +101,6 @@ class ChatWatermarkFormatter(WatermarkFormatter):
                 ranges.append((segment.start, segment.end))
 
         return ranges
-
-    @staticmethod
-    def _format_wait(wait: timedelta) -> str:
-        hours: int = math.ceil(wait.total_seconds() / 3600)
-
-        return f"{hours} h" if hours > 1 else f"{math.ceil(wait.total_seconds() / 60)} min"
 
     @staticmethod
     def _format_time(seconds: int) -> str:

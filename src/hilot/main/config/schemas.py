@@ -5,6 +5,7 @@ from dature.fields.secret_str import SecretStr
 from .database import DatabaseConfig
 from .disk import DiskConfig
 from .encryption import EncryptionConfig
+from .groq import GroqConfig
 from .nats import NATSConfig
 from .s3 import S3Config
 from .telegram import TelegramConfig
@@ -46,6 +47,14 @@ class DetectorSchema:
     detector: DetectorConfig
     encryption: EncryptionConfig
     database: DatabaseConfig
+    nats: NATSConfig
+    s3: S3Config
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class TranscriberSchema:
+    transcriber: WorkerConfig
+    groq: GroqConfig
     nats: NATSConfig
     s3: S3Config
 

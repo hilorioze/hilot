@@ -62,3 +62,9 @@ concurrency = 2
 http = {host = "127.0.0.1", port = 9105}
 
 browser_url = "http://127.0.0.1:9222"
+
+[transcriber]
+# groq takes the requests at once, the limits of the account set the pace
+concurrency = 4
+
+http = {host = "127.0.0.1", port = 9106}
