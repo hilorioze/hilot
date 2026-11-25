@@ -8,9 +8,11 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from hilot.domain.interfaces.adapters.media_lock import MediaLock
 from hilot.domain.interfaces.repositories.cached_file import CachedFileRepository
 from hilot.domain.interfaces.repositories.delivered_part import DeliveredPartRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
+from hilot.infrastructure.database.sql.media_lock import SQLMediaLock
 from hilot.infrastructure.database.sql.repositories.cached_file import SQLCachedFileRepository
 from hilot.infrastructure.database.sql.repositories.delivered_part import (
     SQLDeliveredPartRepository,
@@ -45,6 +47,8 @@ class DatabaseProvider(Provider):
             yield session
 
     unit_of_work = provide(SQLUnitOfWork, provides=UnitOfWork, scope=Scope.REQUEST)
+
+    media_lock = provide(SQLMediaLock, provides=MediaLock, scope=Scope.APP)
 
     cached_file_repository = provide(
         SQLCachedFileRepository, provides=CachedFileRepository, scope=Scope.REQUEST

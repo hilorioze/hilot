@@ -2,7 +2,6 @@ from datetime import timedelta
 from typing import override
 
 from sqlalchemy import func, select
-from sqlalchemy.dialects.postgresql import Insert, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hilot.domain.entities.stored_file import StoredFile
@@ -13,6 +12,7 @@ from hilot.infrastructure.database.sql.converters import (
     convert_stored_file_model_to_entity,
 )
 from hilot.infrastructure.database.sql.models.stored_file import StoredFileModel
+from hilot.infrastructure.database.sql.upsert import upsert
 
 
 class SQLStoredFileRepository(StoredFileRepository):
@@ -38,17 +38,8 @@ class SQLStoredFileRepository(StoredFileRepository):
 
     @override
     async def save(self, stored_file: StoredFile) -> None:
-        statement: Insert = insert(StoredFileModel).values(
-            convert_stored_file_entity_to_row(stored_file)
-        )
-
-        await self._session.execute(
-            statement.on_conflict_do_update(
-                index_elements=[StoredFileModel.extractor, StoredFileModel.media_id],
-                set_={
-                    column.name: column for column in statement.excluded if not column.primary_key
-                },
-                # a file sent again keeps its time: the file storage expires it from its upload
-                where=StoredFileModel.storage_key != statement.excluded.storage_key,
-            )
+        await upsert(
+            session=self._session,
+            model=StoredFileModel,
+            rows=[convert_stored_file_entity_to_row(stored_file)],
         )

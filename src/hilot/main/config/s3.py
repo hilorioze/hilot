@@ -11,7 +11,7 @@ class S3Config:
 
     bucket: str
 
-    # how long a sent file is reused by the other accounts; must be a bit shorter than the bucket keeps a file
+    # how long a stored file is reused by the other accounts; must be a bit shorter than the bucket keeps a file
     reuse_period: timedelta
 
     access_key_id: str

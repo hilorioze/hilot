@@ -55,6 +55,10 @@ class MediaInfo:
                     or ("m4a" in formats and self.audio_codec == "aac")
                 )
 
+    # transcoding can still shrink it under the limit
+    def can_fit(self, size_limit: int) -> bool:
+        return self.size <= size_limit or self.needs_transcoding()
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AttachedMedia:

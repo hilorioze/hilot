@@ -36,6 +36,7 @@ class DownloaderSchema:
 class TranscoderSchema:
     transcoder: WorkerConfig
     disk: DiskConfig
+    database: DatabaseConfig
     nats: NATSConfig
     s3: S3Config
 

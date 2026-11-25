@@ -31,7 +31,7 @@ from .di.handlers import HandlerProvider
 from .di.http import RedirectReaderProvider
 from .di.media import WorkspaceProvider
 from .di.queue import QueueProvider
-from .di.s3 import S3Provider, StoredFileProvider
+from .di.s3 import S3Provider
 from .di.telegram import SessionProvider, TelegramProvider
 from .di.watermarks import DetectableMediaMatcherProvider
 from .worker import configure_logging, run_worker
@@ -53,7 +53,6 @@ async def run() -> None:
     container: AsyncContainer = make_async_container(
         DatabaseProvider(),
         S3Provider(),
-        StoredFileProvider(),
         QueueProvider(),
         SessionProvider(),
         TelegramProvider(),

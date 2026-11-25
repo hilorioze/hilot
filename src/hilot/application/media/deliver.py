@@ -6,7 +6,6 @@ from typing import ClassVar
 
 from hilot.domain.entities.cached_file import CachedFile
 from hilot.domain.entities.delivered_part import DeliveredPart
-from hilot.domain.entities.stored_file import StoredFile
 from hilot.domain.errors.messenger import (
     AlreadySentError,
     FileReferenceExpiredError,
@@ -28,7 +27,6 @@ from hilot.domain.interfaces.adapters.messenger import (
 from hilot.domain.interfaces.adapters.workspace import Workspace
 from hilot.domain.interfaces.repositories.cached_file import CachedFileRepository
 from hilot.domain.interfaces.repositories.delivered_part import DeliveredPartRepository
-from hilot.domain.interfaces.repositories.stored_file import StoredFileRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
 from hilot.domain.value_objects.download import (
     DownloadRequest,
@@ -37,8 +35,6 @@ from hilot.domain.value_objects.download import (
 )
 from hilot.domain.value_objects.media import FileId, MediaKind, StoredMedia
 from hilot.domain.value_objects.message import Link, MessageId, SourceMessage
-
-from .converters import convert_stored_media_to_file
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -67,7 +63,6 @@ class DeliverMedia:
         download_scheduler: DownloadScheduler,
         delivered_part_repository: DeliveredPartRepository,
         cached_file_repository: CachedFileRepository,
-        stored_file_repository: StoredFileRepository,
         uow: UnitOfWork,
     ) -> None:
         self._progress_indicator: ProgressIndicator = progress_indicator
@@ -84,7 +79,6 @@ class DeliverMedia:
         self._download_scheduler: DownloadScheduler = download_scheduler
         self._delivered_part_repository: DeliveredPartRepository = delivered_part_repository
         self._cached_file_repository: CachedFileRepository = cached_file_repository
-        self._stored_file_repository: StoredFileRepository = stored_file_repository
         self._uow: UnitOfWork = uow
 
     async def __call__(self, data: DeliverMediaDTO) -> None:
@@ -133,7 +127,6 @@ class DeliverMedia:
                 return
 
             cached_files: list[CachedFile] = []
-            stored_files: list[StoredFile] = []
 
             # a duplicate send means an earlier attempt delivered the part but crashed before saving it
             with suppress(AlreadySentError):
@@ -143,21 +136,12 @@ class DeliverMedia:
                     cached_files = await self._send_media(
                         request=request, part=part, media=content
                     )
-                    stored_files = [
-                        convert_stored_media_to_file(item)
-                        for item in content
-                        if isinstance(item, StoredMedia)
-                    ]
 
             async with self._uow:
                 await self._delivered_part_repository.add(delivered_part)
 
                 for cached_file in cached_files:
                     await self._cached_file_repository.save(cached_file)
-
-                # let other accounts reuse the sent files until the file storage expires them
-                for stored_file in stored_files:
-                    await self._stored_file_repository.save(stored_file)
 
         if request.replaces_command():
             await self._finish_command(result)
