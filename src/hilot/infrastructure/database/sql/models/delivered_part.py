@@ -1,3 +1,4 @@
+from sqlalchemy import ARRAY, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -11,3 +12,5 @@ class DeliveredPartModel(Base):
     message_id: Mapped[int] = mapped_column(primary_key=True)
 
     part: Mapped[int] = mapped_column(primary_key=True)
+
+    message_ids: Mapped[list[int]] = mapped_column(ARRAY(BigInteger))

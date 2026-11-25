@@ -10,6 +10,14 @@ ChatId = NewType("ChatId", int)
 MessageId = NewType("MessageId", int)
 
 
+# a private chat is with a person, a chat with a bot is apart
+class ChatKind(StrEnum):
+    PRIVATE = "private"
+    BOT = "bot"
+    GROUP = "group"
+    CHANNEL = "channel"
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SourceMessage:
     account_id: AccountId
@@ -19,7 +27,7 @@ class SourceMessage:
     # as written, without formatting
     text: str
 
-    is_private: bool
+    chat_kind: ChatKind
     is_saved_messages: bool
 
     # the owner's own message, which the account can edit; the other side of a private chat calls the commands too
@@ -29,6 +37,10 @@ class SourceMessage:
     has_media: bool
 
     sent_at: datetime
+
+    @property
+    def is_private(self) -> bool:
+        return self.chat_kind == ChatKind.PRIVATE
 
     # reactions in saved messages are tags available only with premium
     def allows_reactions(self) -> bool:

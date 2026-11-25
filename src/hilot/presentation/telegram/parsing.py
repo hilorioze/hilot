@@ -7,10 +7,22 @@ from pyrogram.types import Chat, Message
 from hilot.domain.value_objects.message import (
     AccountId,
     ChatId,
+    ChatKind,
     MediaLocation,
     MessageId,
     SourceMessage,
 )
+
+_CHAT_KINDS: dict[ChatType, ChatKind] = {
+    ChatType.PRIVATE: ChatKind.PRIVATE,
+    ChatType.BOT: ChatKind.BOT,
+    ChatType.GROUP: ChatKind.GROUP,
+    ChatType.SUPERGROUP: ChatKind.GROUP,
+    ChatType.FORUM: ChatKind.GROUP,
+    # the direct messages of a channel are a group of their own
+    ChatType.DIRECT: ChatKind.GROUP,
+    ChatType.CHANNEL: ChatKind.CHANNEL,
+}
 
 
 def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
@@ -25,7 +37,7 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         message_id=MessageId(message.id),
         # the text of a media message is its caption
         text=str(message.text or message.caption or ""),
-        is_private=chat.type == ChatType.PRIVATE,
+        chat_kind=_CHAT_KINDS[cast(ChatType, chat.type)],
         is_saved_messages=is_saved_messages,
         # telegram marks the messages of saved messages incoming, and a forwarded one can't be edited
         is_outgoing=bool(message.outgoing)

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from hilot.domain.value_objects.message import AccountId, ChatId, MessageId
 
@@ -10,3 +10,6 @@ class DeliveredPart:
     message_id: MessageId
 
     part: int
+
+    # the message holding each media of the part, none for a failure
+    message_ids: list[MessageId] = field(compare=False)

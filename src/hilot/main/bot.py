@@ -28,6 +28,7 @@ from hilot.presentation.taskiq.transcriptions import reply_transcription
 from hilot.presentation.taskiq.watermarks import reply_watermark_check
 
 from .config.database import DatabaseConfig
+from .config.inline_bot import InlineBotConfig
 from .config.loader import load_config
 from .config.nats import NATSConfig
 from .config.s3 import S3Config
@@ -39,6 +40,7 @@ from .di.extractors import LinkMatcherProvider
 from .di.formatters import FormatterProvider
 from .di.handlers import HandlerProvider
 from .di.http import RedirectReaderProvider
+from .di.inline_bot import InlineBotProvider
 from .di.media import WorkspaceProvider
 from .di.queue import QueueProvider
 from .di.s3 import S3Provider
@@ -73,6 +75,7 @@ async def run() -> None:
         QueueProvider(),
         SessionProvider(),
         TelegramProvider(),
+        InlineBotProvider(),
         HandlerProvider(),
         FormatterProvider(),
         LinkMatcherProvider(),
@@ -88,6 +91,7 @@ async def run() -> None:
             Route: get_delivery_route(account_id),
             Authorization: authorization,
             TelegramConfig: schema.telegram,
+            InlineBotConfig: schema.inline_bot,
             BotConfig: schema.bot,
         },
     )

@@ -4,6 +4,7 @@ from typing import Protocol
 from hilot.domain.entities.cached_file import CachedFile
 from hilot.domain.value_objects.media import AttachedMedia, FileId, OutgoingMedia, StoredMedia
 from hilot.domain.value_objects.message import (
+    AccountId,
     ChatId,
     CommandAnswer,
     Link,
@@ -12,6 +13,7 @@ from hilot.domain.value_objects.message import (
     MessageId,
     SourceMessage,
 )
+from hilot.domain.value_objects.rich import RichMessage
 from hilot.domain.value_objects.text import RichText
 
 
@@ -54,9 +56,40 @@ class TextLimitReader(Protocol):
 
 
 class MediaSender(Protocol):
+    # an album counts its media from `first_index` among the media of its part
     async def send_media(
-        self, *, source: SourceMessage, part: int, media: list[OutgoingMedia], reply_to: MessageId
+        self,
+        *,
+        source: SourceMessage,
+        part: int,
+        first_index: int,
+        media: list[OutgoingMedia],
+        reply_to: MessageId,
     ) -> list[MessageId]: ...
+
+
+class RichLimitReader(Protocol):
+    def get_rich_text_limit(self) -> int: ...
+
+    def get_rich_upload_limit(self) -> int: ...
+
+
+# the inline bot uploads the files of the rich messages to its chat with the account
+class RichMediaUploader(Protocol):
+    async def upload_rich_media(
+        self, *, account_id: AccountId, media: StoredMedia | CachedFile, path: Path
+    ) -> FileId: ...
+
+
+# the account sends a rich message as a result of the inline bot
+class RichSender(Protocol):
+    async def send_rich(
+        self, *, source: SourceMessage, part: int, message: RichMessage, reply_to: MessageId
+    ) -> MessageId: ...
+
+
+class RichReplier(Protocol):
+    async def reply_rich(self, *, source: SourceMessage, message: RichMessage) -> None: ...
 
 
 # the caption starts with the text of the message, which keeps its formatting

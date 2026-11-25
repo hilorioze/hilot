@@ -19,6 +19,10 @@ system_lang_code = "en-ie"
 
 timezone = "Europe/Dublin"
 
+[inline_bot]
+api_url = "https://api.telegram.org"
+local_mode = false
+
 [database]
 url = "postgresql+asyncpg:///hilot?host=${PGHOST}"
 

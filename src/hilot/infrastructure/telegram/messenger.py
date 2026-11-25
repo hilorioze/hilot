@@ -1,5 +1,4 @@
 import asyncio
-import hashlib
 import io
 import mimetypes
 from collections.abc import Generator
@@ -97,6 +96,8 @@ from hilot.domain.value_objects.message import (
 )
 from hilot.domain.value_objects.text import RichText, TextStyle
 
+from .random_id import ANSWER_PART, get_random_id
+
 
 class KurigramMessenger(
     ProgressIndicator,
@@ -117,9 +118,6 @@ class KurigramMessenger(
     TextFileReplier,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
-
-    # the answer to a command goes apart from the parts of its media, which count from 0
-    _ANSWER_PART: ClassVar[int] = -1
 
     _DOCUMENT_FILE_TYPES: ClassVar[dict[MediaKind, FileType]] = {
         MediaKind.VIDEO: FileType.VIDEO,
@@ -281,11 +279,17 @@ class KurigramMessenger(
 
     @override
     async def send_media(
-        self, *, source: SourceMessage, part: int, media: list[OutgoingMedia], reply_to: MessageId
+        self,
+        *,
+        source: SourceMessage,
+        part: int,
+        first_index: int,
+        media: list[OutgoingMedia],
+        reply_to: MessageId,
     ) -> list[MessageId]:
         random_ids: list[int] = [
-            self._get_random_id(source=source, part=part, index=index)
-            for index in range(len(media))
+            get_random_id(source=source, part=part, index=index)
+            for index in range(first_index, first_index + len(media))
         ]
 
         query: SendMedia | SendMultiMedia = await self._create_media_query(
@@ -348,7 +352,7 @@ class KurigramMessenger(
                 SendMessage(
                     peer=await self._resolve_peer(source.chat_id),
                     message=text,
-                    random_id=self._get_random_id(source=source, part=part, index=0),
+                    random_id=get_random_id(source=source, part=part, index=0),
                     reply_to=self._create_reply_to(message_id=source.message_id, quote=quote),
                     silent=True,
                 )
@@ -381,7 +385,7 @@ class KurigramMessenger(
                 SendMessage(
                     peer=await self._resolve_peer(source.chat_id),
                     message=text.get_text(),
-                    random_id=self._get_random_id(source=source, part=self._ANSWER_PART, index=0),
+                    random_id=get_random_id(source=source, part=ANSWER_PART, index=0),
                     reply_to=self._create_reply_to(message_id=source.message_id, quote=None),
                     entities=self._create_entities(text),
                     silent=True,
@@ -404,7 +408,7 @@ class KurigramMessenger(
                         attributes=[DocumentAttributeFilename(file_name=name)],
                     ),
                     message="",
-                    random_id=self._get_random_id(source=source, part=self._ANSWER_PART, index=0),
+                    random_id=get_random_id(source=source, part=ANSWER_PART, index=0),
                     reply_to=self._create_reply_to(message_id=source.message_id, quote=None),
                     silent=True,
                 )
@@ -573,16 +577,6 @@ class KurigramMessenger(
         return InputReplyToMessage(
             reply_to_msg_id=message_id, quote_text=quote.text, quote_offset=quote.offset
         )
-
-    @staticmethod
-    def _get_random_id(*, source: SourceMessage, part: int, index: int) -> int:
-        # the same part of a message always gets the same random ids, so telegram refuses to send it twice
-        digest: bytes = hashlib.blake2b(
-            f"{source.account_id}:{source.chat_id}:{source.message_id}:{part}:{index}".encode(),
-            digest_size=8,
-        ).digest()
-
-        return int.from_bytes(digest, signed=True)
 
     @staticmethod
     @contextmanager

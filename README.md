@@ -32,6 +32,8 @@ The commands share PostgreSQL, [NATS](https://nats.io/) with JetStream and an S3
 
 - `[telegram]`: the app and the device hilot logs in as; `hilot-login` and `hilot-bot` need the same one
 - `telegram.test_mode`: `hilot-login` logs in to [the test backend](https://core.telegram.org/api/auth#test-accounts); the session string keeps it for `hilot-bot`
+- `[inline_bot]`: the bot whose inline results bring rich messages, for the captions that don't fit, albums of over 10 media and long transcripts; an account sends them once it has started the bot, and a chat that refuses inline bots gets plain messages
+- `inline_bot.local_mode`: `api_url` is a [Bot API server](https://github.com/tdlib/telegram-bot-api) started with `--local`, which takes files of up to 2000 MB
 - `bot.max_message_age`: messages older than this that came in while `hilot-bot` was down are skipped
 - `bot.check_ins`: once a day, at a random moment between `start` and `end`, sends `command` to `bot` and presses `buttons` by their callback data; only on the accounts that have started the bot
 - `s3.reuse_period`: how long the other accounts send a stored file from the bucket instead of downloading it again
@@ -44,6 +46,7 @@ Secrets come from [secretspec](https://secretspec.dev/); the `development` profi
 | Secret | Commands | |
 | --- | --- | --- |
 | `SESSION_STRING` | bot | the output of `hilot-login` |
+| `INLINE_BOT__TOKEN` | bot | |
 | `ENCRYPTION__KEYS` | downloader, detector, cookies | JSON list of [Fernet](https://cryptography.io/en/latest/fernet/) keys for the cookies and the synthid.com accounts in the database; the first one encrypts, so a new key goes first |
 | `DOWNLOADER__PROXY` | downloader | optional proxy URL for the downloads |
 | `GROQ__API_KEY` | transcriber | |
@@ -56,7 +59,7 @@ Secrets come from [secretspec](https://secretspec.dev/); the `development` profi
 
 - `src/hilot/domain/`: entities, value objects, errors and the interfaces of the adapters and repositories
 - `src/hilot/application/`: use cases
-- `src/hilot/infrastructure/`: adapters on kurigram, yt-dlp, gallery-dl, ffmpeg, Groq, SQLAlchemy, S3, taskiq and synthid.com
+- `src/hilot/infrastructure/`: adapters on kurigram, aiogram, yt-dlp, gallery-dl, ffmpeg, Groq, SQLAlchemy, S3, taskiq and synthid.com
 - `src/hilot/presentation/`: Telegram handlers and reply texts, taskiq tasks and HTTP endpoints
 - `src/hilot/main/`: config, dishka providers and the commands
 

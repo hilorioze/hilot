@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
+from hilot.domain.errors.messenger import RichUnavailableError
 from hilot.domain.interfaces.adapters.messenger import (
     CaptionLimitReader,
     CommandAnswerer,
     ProgressIndicator,
+    RichLimitReader,
+    RichReplier,
     TextEditor,
     TextFileReplier,
     TextLimitReader,
@@ -18,6 +21,7 @@ from hilot.domain.value_objects.message import (
     CommandAnswer,
     SourceMessage,
 )
+from hilot.domain.value_objects.rich import RichMessage
 from hilot.domain.value_objects.text import RichText, TextStyle
 from hilot.domain.value_objects.transcription import Transcript, TranscriptionReply
 
@@ -36,9 +40,11 @@ class ReplyTranscription:
         command_answerer: CommandAnswerer,
         text_editor: TextEditor,
         text_replier: TextReplier,
+        rich_replier: RichReplier,
         text_file_replier: TextFileReplier,
         caption_limit_reader: CaptionLimitReader,
         text_limit_reader: TextLimitReader,
+        rich_limit_reader: RichLimitReader,
         text_measurer: TextMeasurer,
         progress_indicator: ProgressIndicator,
         transcription_formatter: TranscriptionFormatter,
@@ -46,9 +52,11 @@ class ReplyTranscription:
         self._command_answerer: CommandAnswerer = command_answerer
         self._text_editor: TextEditor = text_editor
         self._text_replier: TextReplier = text_replier
+        self._rich_replier: RichReplier = rich_replier
         self._text_file_replier: TextFileReplier = text_file_replier
         self._caption_limit_reader: CaptionLimitReader = caption_limit_reader
         self._text_limit_reader: TextLimitReader = text_limit_reader
+        self._rich_limit_reader: RichLimitReader = rich_limit_reader
         self._text_measurer: TextMeasurer = text_measurer
         self._progress_indicator: ProgressIndicator = progress_indicator
         self._transcription_formatter: TranscriptionFormatter = transcription_formatter
@@ -77,7 +85,8 @@ class ReplyTranscription:
         if source.allows_reactions():
             await self._progress_indicator.hide_progress(source)
 
-    # the owner's message takes the transcript under its text, the others get it in reply, and one too long for a message goes as a file
+    # the owner's message takes the transcript under its text, the others get it in reply, as a rich message when it's long,
+    # and one too long even for that or in a chat without the inline bot goes as a file
     async def _place_transcript(self, *, source: SourceMessage, transcript: Transcript) -> None:
         quote: RichText = RichText.styled(transcript.text, style=TextStyle.EXPANDABLE_QUOTE)
         text: RichText = (
@@ -99,6 +108,16 @@ class ReplyTranscription:
             <= self._text_limit_reader.get_text_limit()
         ):
             await self._text_replier.reply_text(source=source, text=quote)
+        elif (
+            self._text_measurer.measure(quote.get_text())
+            <= self._rich_limit_reader.get_rich_text_limit()
+        ):
+            try:
+                await self._rich_replier.reply_rich(
+                    source=source, message=RichMessage(media=[], text=quote)
+                )
+            except RichUnavailableError:
+                await self._reply_file(source=source, transcript=transcript)
         else:
             await self._reply_file(source=source, transcript=transcript)
 

@@ -13,6 +13,7 @@ dependencies = [
     # keep-sorted start
     "adaptix>=3.0.0b12",
     "aiobotocore>=3.10.0",
+    "aiogram>=3.34.0",
     "aiohttp>=3.14.5",
     "alembic>=1.20.1",
     "cryptography>=50.0.2",

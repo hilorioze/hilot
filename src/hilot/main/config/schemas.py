@@ -6,6 +6,7 @@ from .database import DatabaseConfig
 from .disk import DiskConfig
 from .encryption import EncryptionConfig
 from .groq import GroqConfig
+from .inline_bot import InlineBotConfig
 from .nats import NATSConfig
 from .s3 import S3Config
 from .telegram import TelegramConfig
@@ -18,6 +19,7 @@ class BotSchema:
 
     bot: BotConfig
     telegram: TelegramConfig
+    inline_bot: InlineBotConfig
     database: DatabaseConfig
     nats: NATSConfig
     s3: S3Config

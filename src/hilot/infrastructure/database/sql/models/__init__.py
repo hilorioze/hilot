@@ -1,4 +1,5 @@
 from .base import Base
+from .bot_file import BotFileModel
 from .cached_file import CachedFileModel
 from .cookie import CookieModel
 from .delivered_part import DeliveredPartModel
@@ -10,6 +11,7 @@ from .username import UsernameModel
 
 __all__ = [
     "Base",
+    "BotFileModel",
     "CachedFileModel",
     "CookieModel",
     "DeliveredPartModel",
