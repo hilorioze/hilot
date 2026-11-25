@@ -177,6 +177,7 @@ class DownloadMedia:
             info=info,
             title=entry.title,
             performer=entry.performer,
+            post=entry.post,
         )
 
         # the other accounts and a retry of this download reuse the file until the file storage expires it

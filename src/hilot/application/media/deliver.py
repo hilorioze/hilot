@@ -11,10 +11,12 @@ from hilot.domain.errors.messenger import (
     FileReferenceExpiredError,
     MessageGoneError,
 )
+from hilot.domain.interfaces.adapters.caption_formatter import CaptionFormatter
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.messenger import (
+    CaptionLimitReader,
     CommandAnswerer,
     MediaRefresher,
     MediaSender,
@@ -32,7 +34,7 @@ from hilot.domain.value_objects.download import (
     DownloadResult,
     Failure,
 )
-from hilot.domain.value_objects.media import FileId, MediaKind, StoredMedia
+from hilot.domain.value_objects.media import FileId, MediaKind, OutgoingMedia, StoredMedia
 from hilot.domain.value_objects.message import (
     AnswerKind,
     CommandAnswer,
@@ -62,6 +64,8 @@ class DeliverMedia:
         text_sender: TextSender,
         command_answerer: CommandAnswerer,
         failure_formatter: FailureFormatter,
+        caption_formatter: CaptionFormatter,
+        caption_limit_reader: CaptionLimitReader,
         file_storage: FileStorage,
         workspace: Workspace,
         download_scheduler: DownloadScheduler,
@@ -77,6 +81,8 @@ class DeliverMedia:
         self._text_sender: TextSender = text_sender
         self._command_answerer: CommandAnswerer = command_answerer
         self._failure_formatter: FailureFormatter = failure_formatter
+        self._caption_formatter: CaptionFormatter = caption_formatter
+        self._caption_limit_reader: CaptionLimitReader = caption_limit_reader
         self._file_storage: FileStorage = file_storage
         self._workspace: Workspace = workspace
         self._download_scheduler: DownloadScheduler = download_scheduler
@@ -201,7 +207,10 @@ class DeliverMedia:
 
         try:
             message_ids: list[MessageId] = await self._media_sender.send_media(
-                source=source, part=part, files=files, reply_to=request.reply_to
+                source=source,
+                part=part,
+                media=self._caption_media(media=media, files=files),
+                reply_to=request.reply_to,
             )
         except FileReferenceExpiredError:
             files = [
@@ -209,7 +218,10 @@ class DeliverMedia:
                 for item, file_id in zip(media, files, strict=True)
             ]
             message_ids = await self._media_sender.send_media(
-                source=source, part=part, files=files, reply_to=request.reply_to
+                source=source,
+                part=part,
+                media=self._caption_media(media=media, files=files),
+                reply_to=request.reply_to,
             )
 
         return [
@@ -220,8 +232,25 @@ class DeliverMedia:
                 file_id=file_id,
                 chat_id=source.chat_id,
                 message_id=message_id,
+                post=item.post,
             )
             for item, file_id, message_id in zip(media, files, message_ids, strict=True)
+        ]
+
+    # an album shows the caption of each post once, on its first file
+    def _caption_media(
+        self, *, media: tuple[StoredMedia | CachedFile, ...], files: list[FileId]
+    ) -> list[OutgoingMedia]:
+        limit: int = self._caption_limit_reader.get_caption_limit()
+
+        return [
+            OutgoingMedia(
+                file_id=file_id,
+                caption=self._caption_formatter.format_caption(post=item.post, limit=limit)
+                if index == 0 or item.post != media[index - 1].post
+                else None,
+            )
+            for index, (item, file_id) in enumerate(zip(media, files, strict=True))
         ]
 
     async def _get_file_id(

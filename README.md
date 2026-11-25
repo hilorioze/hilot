@@ -8,6 +8,8 @@ A multi-functional Telegram userbot.
 
 A link in an outgoing or a private message gets the media behind it as a reply.
 
+The media of a link and of `.dl` goes out with the title, the description and the author of its post, as much as the site gives, cut to the caption limit of Telegram; an album has the caption once per post.
+
 `.dl` or `.download` downloads the links given to it. In reply to a message, it downloads the links of that message and sends the media in reply to it.
 
 The commands work in any chat, saved messages included, and in a reply to a message from another chat: Telegram gives such a reply only the quoted text, the link preview and the media of that message, so `.dl` takes the quoted and previewed links and `.synth` checks the media.

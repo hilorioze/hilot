@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Protocol
 
 from hilot.domain.entities.cached_file import CachedFile
-from hilot.domain.value_objects.media import AttachedMedia, FileId, StoredMedia
+from hilot.domain.value_objects.media import AttachedMedia, FileId, OutgoingMedia, StoredMedia
 from hilot.domain.value_objects.message import (
     ChatId,
     CommandAnswer,
@@ -39,9 +39,13 @@ class MediaUploader(Protocol):
     ) -> FileId: ...
 
 
+class CaptionLimitReader(Protocol):
+    def get_caption_limit(self) -> int: ...
+
+
 class MediaSender(Protocol):
     async def send_media(
-        self, *, source: SourceMessage, part: int, files: list[FileId], reply_to: MessageId
+        self, *, source: SourceMessage, part: int, media: list[OutgoingMedia], reply_to: MessageId
     ) -> list[MessageId]: ...
 
 

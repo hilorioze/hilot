@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from hilot.domain.value_objects.media import MediaInfo, MediaKey, StorageKey
+from hilot.domain.value_objects.media import MediaInfo, MediaKey, PostDetails, StorageKey
 
 
 # a file in the file storage that any account can send
@@ -14,3 +14,5 @@ class StoredFile:
 
     title: str | None = field(compare=False)
     performer: str | None = field(compare=False)
+
+    post: PostDetails = field(compare=False)

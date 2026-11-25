@@ -29,4 +29,8 @@ class StoredFileModel(Base):
     title: Mapped[str | None]
     performer: Mapped[str | None]
 
+    post_title: Mapped[str | None]
+    post_description: Mapped[str | None]
+    post_author: Mapped[str | None]
+
     stored_at: Mapped[datetime] = mapped_column(server_default=func.now())

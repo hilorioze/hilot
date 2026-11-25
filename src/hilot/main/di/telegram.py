@@ -4,6 +4,7 @@ from pyrogram.storage.storage import Storage
 
 from hilot.domain.interfaces.adapters.chat_bot import ChatBot
 from hilot.domain.interfaces.adapters.messenger import (
+    CaptionLimitReader,
     CommandAnswerer,
     MediaRefresher,
     MediaSender,
@@ -64,6 +65,7 @@ class TelegramProvider(Provider):
             MessageReader,
             MessageMediaReader,
             UploadLimitReader,
+            CaptionLimitReader,
             MediaUploader,
             MediaSender,
             MediaRefresher,

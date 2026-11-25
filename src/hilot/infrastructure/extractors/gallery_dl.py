@@ -24,7 +24,7 @@ from hilot.domain.errors.extraction import (
 from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.media_extractor import Extraction, MediaExtractor
 from hilot.domain.value_objects.cookie import Cookie
-from hilot.domain.value_objects.media import ExtractedMedia, MediaKey
+from hilot.domain.value_objects.media import ExtractedMedia, MediaKey, PostDetails
 from hilot.infrastructure.metrics import EXTRACTIONS, LOGIN_REQUIRED, MEDIA_UNAVAILABLE
 
 from .cookies import fill_cookie_jar, read_cookie_jar
@@ -131,6 +131,32 @@ class _GalleryDlExtraction(Extraction):
             size=None,
             title=track.get("title") or file.kwdict.get("title"),
             performer=track.get("authorName"),
+            post=cls._create_post(file.kwdict),
+        )
+
+    @staticmethod
+    def _create_post(kwdict: dict[str, Any]) -> PostDetails:
+        # most sites describe the author with a dict, the others with a name
+        author: dict[str, Any] = (
+            {"name": kwdict["author"]}
+            if isinstance(kwdict.get("author"), str)
+            else kwdict.get("author") or {}
+        )
+
+        # each site names the text and the author of a post its own way: instagram `description` and `fullname`, twitter `content` and the author's `nick`, tiktok `desc` and the author's `nickname`
+        return PostDetails(
+            title=kwdict.get("title") or None,
+            description=kwdict.get("description")
+            or kwdict.get("content")
+            or kwdict.get("desc")
+            or None,
+            author=author.get("nick")
+            or author.get("nickname")
+            or kwdict.get("fullname")
+            or author.get("name")
+            or author.get("uniqueId")
+            or kwdict.get("username")
+            or None,
         )
 
     @staticmethod

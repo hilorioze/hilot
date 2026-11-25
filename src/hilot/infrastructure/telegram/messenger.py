@@ -54,6 +54,7 @@ from hilot.domain.errors.messenger import (
     MessageGoneError,
 )
 from hilot.domain.interfaces.adapters.messenger import (
+    CaptionLimitReader,
     MediaRefresher,
     MediaSender,
     MediaUploader,
@@ -64,7 +65,13 @@ from hilot.domain.interfaces.adapters.messenger import (
     TextSender,
     UploadLimitReader,
 )
-from hilot.domain.value_objects.media import AttachedMedia, FileId, MediaKind, StoredMedia
+from hilot.domain.value_objects.media import (
+    AttachedMedia,
+    FileId,
+    MediaKind,
+    OutgoingMedia,
+    StoredMedia,
+)
 from hilot.domain.value_objects.message import (
     ChatId,
     Link,
@@ -79,6 +86,7 @@ class KurigramMessenger(
     MessageReader,
     MessageMediaReader,
     UploadLimitReader,
+    CaptionLimitReader,
     MediaUploader,
     MediaSender,
     MediaRefresher,
@@ -181,6 +189,11 @@ class KurigramMessenger(
         return (4000 if self._client.me and self._client.me.is_premium else 2000) * 1024 * 1024
 
     @override
+    def get_caption_limit(self) -> int:
+        # `caption_length_limit_default` and `caption_length_limit_premium` of telegram's app config
+        return 4096 if self._client.me and self._client.me.is_premium else 1024
+
+    @override
     async def upload_media(
         self, *, chat_id: ChatId, media: StoredMedia, path: Path, shows_progress: bool
     ) -> FileId:
@@ -219,15 +232,15 @@ class KurigramMessenger(
 
     @override
     async def send_media(
-        self, *, source: SourceMessage, part: int, files: list[FileId], reply_to: MessageId
+        self, *, source: SourceMessage, part: int, media: list[OutgoingMedia], reply_to: MessageId
     ) -> list[MessageId]:
         random_ids: list[int] = [
             self._get_random_id(source=source, part=part, index=index)
-            for index in range(len(files))
+            for index in range(len(media))
         ]
 
         query: SendMedia | SendMultiMedia = await self._create_media_query(
-            chat_id=source.chat_id, files=files, random_ids=random_ids, reply_to=reply_to
+            chat_id=source.chat_id, media=media, random_ids=random_ids, reply_to=reply_to
         )
 
         with self._translate_errors():
@@ -353,7 +366,7 @@ class KurigramMessenger(
         self,
         *,
         chat_id: ChatId,
-        files: list[FileId],
+        media: list[OutgoingMedia],
         random_ids: list[int],
         reply_to: MessageId,
     ) -> SendMedia | SendMultiMedia:
@@ -363,11 +376,11 @@ class KurigramMessenger(
         )
 
         # a lone media goes out as a plain message, as the official app sends it
-        if len(files) == 1:
+        if len(media) == 1:
             return SendMedia(
                 peer=peer,
-                media=get_input_media_from_file_id(files[0]),
-                message="",
+                media=get_input_media_from_file_id(media[0].file_id),
+                message=media[0].caption or "",
                 random_id=random_ids[0],
                 reply_to=input_reply_to,
                 silent=True,
@@ -377,9 +390,11 @@ class KurigramMessenger(
             peer=peer,
             multi_media=[
                 InputSingleMedia(
-                    media=get_input_media_from_file_id(file_id), random_id=random_id, message=""
+                    media=get_input_media_from_file_id(item.file_id),
+                    random_id=random_id,
+                    message=item.caption or "",
                 )
-                for file_id, random_id in zip(files, random_ids, strict=True)
+                for item, random_id in zip(media, random_ids, strict=True)
             ],
             reply_to=input_reply_to,
             silent=True,

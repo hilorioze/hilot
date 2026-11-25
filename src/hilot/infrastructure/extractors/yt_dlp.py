@@ -23,7 +23,7 @@ from hilot.domain.errors.extraction import (
 from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.media_extractor import Extraction, MediaExtractor
 from hilot.domain.value_objects.cookie import Cookie
-from hilot.domain.value_objects.media import ExtractedMedia, MediaKey
+from hilot.domain.value_objects.media import ExtractedMedia, MediaKey, PostDetails
 from hilot.infrastructure.metrics import EXTRACTIONS, LOGIN_REQUIRED, MEDIA_UNAVAILABLE
 
 from .cookies import fill_cookie_jar, read_cookie_jar
@@ -180,6 +180,11 @@ class _YtDlpExtraction(Extraction):
             size=info.get("filesize") or info.get("filesize_approx"),
             title=info.get("track") or info.get("title"),
             performer=info.get("artist") or info.get("uploader"),
+            post=PostDetails(
+                title=info.get("title"),
+                description=info.get("description") or None,
+                author=info.get("channel") or info.get("uploader"),
+            ),
         )
 
 

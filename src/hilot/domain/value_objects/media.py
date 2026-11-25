@@ -60,6 +60,21 @@ class MediaInfo:
         return self.size <= size_limit or self.needs_transcoding()
 
 
+# what the site tells about the post of a media, as much as it has
+@dataclass(frozen=True, slots=True, kw_only=True)
+class PostDetails:
+    title: str | None
+    description: str | None
+    author: str | None
+
+
+# what goes out to the chat with each file
+@dataclass(frozen=True, slots=True, kw_only=True)
+class OutgoingMedia:
+    file_id: FileId
+    caption: str | None
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AttachedMedia:
     file_id: FileId
@@ -76,6 +91,8 @@ class ExtractedMedia:
     title: str | None
     performer: str | None
 
+    post: PostDetails
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class StoredMedia:
@@ -88,6 +105,8 @@ class StoredMedia:
 
     title: str | None
     performer: str | None
+
+    post: PostDetails
 
     @property
     def kind(self) -> MediaKind:
