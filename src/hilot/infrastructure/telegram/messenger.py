@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, ClassVar, cast, override
 
 from pyrogram import Client, types
-from pyrogram.enums import MessageEntityType, MessageMediaType, ParseMode
+from pyrogram.enums import MessageMediaType
 from pyrogram.errors import (
     ChannelPrivate,
     FileReferenceExpired,
@@ -21,7 +21,9 @@ from pyrogram.raw.base.document_attribute import DocumentAttribute
 from pyrogram.raw.base.input_file import InputFile
 from pyrogram.raw.base.input_media import InputMedia
 from pyrogram.raw.base.input_peer import InputPeer
+from pyrogram.raw.base.message_entity import MessageEntity
 from pyrogram.raw.base.message_media import MessageMedia
+from pyrogram.raw.functions.messages.edit_message import EditMessage
 from pyrogram.raw.functions.messages.send_media import SendMedia
 from pyrogram.raw.functions.messages.send_message import SendMessage
 from pyrogram.raw.functions.messages.send_multi_media import SendMultiMedia
@@ -35,6 +37,7 @@ from pyrogram.raw.types.input_media_uploaded_document import InputMediaUploadedD
 from pyrogram.raw.types.input_media_uploaded_photo import InputMediaUploadedPhoto
 from pyrogram.raw.types.input_reply_to_message import InputReplyToMessage
 from pyrogram.raw.types.input_single_media import InputSingleMedia
+from pyrogram.raw.types.message_entity_text_url import MessageEntityTextUrl
 from pyrogram.raw.types.message_media_document import MessageMediaDocument
 from pyrogram.raw.types.message_media_photo import MessageMediaPhoto
 from pyrogram.raw.types.photo import Photo
@@ -289,7 +292,7 @@ class KurigramMessenger(
 
     @override
     async def edit_text(self, *, source: SourceMessage, text: RichText) -> None:
-        entities: list[types.MessageEntity] = []
+        entities: list[MessageEntity] = []
         offset: int = 0
 
         # telegram measures the entities in utf-16 code units
@@ -297,25 +300,20 @@ class KurigramMessenger(
             length: int = len(part.text.encode("utf-16-le")) // 2
 
             if part.url is not None:
-                entities.append(
-                    types.MessageEntity(
-                        type=MessageEntityType.TEXT_LINK,
-                        offset=offset,
-                        length=length,
-                        url=part.url,
-                    )
-                )
+                entities.append(MessageEntityTextUrl(offset=offset, length=length, url=part.url))
 
             offset += length
 
         # the text of a media message is its caption; a redelivered answer finds its text already in place
         with suppress(MessageNotModified):
-            await self._client.edit_message_text(
-                chat_id=source.chat_id,
-                message_id=source.message_id,
-                text="".join(part.text for part in text.parts),
-                parse_mode=ParseMode.DISABLED,  # kurigram parses markdown and html by default, which a link's underscores would break
-                entities=entities,
+            # kurigram's `edit_message_text` drops the entities it is given
+            await self._client.invoke(
+                EditMessage(
+                    peer=await self._resolve_peer(source.chat_id),
+                    id=source.message_id,
+                    message="".join(part.text for part in text.parts),
+                    entities=entities,
+                )
             )
 
     async def _save_file_showing_progress(
