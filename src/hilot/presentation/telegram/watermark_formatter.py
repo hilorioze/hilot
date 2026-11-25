@@ -19,7 +19,7 @@ class ChatWatermarkFormatter(WatermarkFormatter):
         WatermarkFailure.NO_MEDIA: "nothing to check, reply to a photo, video or audio",
         WatermarkFailure.UNSUPPORTED: "synthid can't check this type",
         WatermarkFailure.TOO_BIG: "too big for synthid",
-        WatermarkFailure.BUG: "something broke on my side",
+        WatermarkFailure.BUG: "something broke",
     }
 
     _REASON_TEXTS: ClassVar[dict[UndeterminedReason, str]] = {

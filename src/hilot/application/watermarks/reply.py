@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from hilot.domain.interfaces.adapters.messenger import CommandAnswerer, ProgressIndicator
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
+from hilot.domain.value_objects.message import AnswerKind, CommandAnswer
 from hilot.domain.value_objects.watermark import WatermarkReply
 
 
@@ -25,7 +26,10 @@ class ReplyWatermarkCheck:
     async def __call__(self, data: ReplyWatermarkCheckDTO) -> None:
         await self._command_answerer.answer_command(
             source=data.reply.source,
-            text=self._watermark_formatter.format_outcome(data.reply.outcome),
+            answer=CommandAnswer(
+                kind=AnswerKind.RESULT if data.reply.is_verdict() else AnswerKind.ERROR,
+                entries=[self._watermark_formatter.format_outcome(data.reply.outcome)],
+            ),
         )
 
         # an edit keeps the reactions, so the reaction is taken off after it

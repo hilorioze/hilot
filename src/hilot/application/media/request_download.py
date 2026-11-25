@@ -10,7 +10,13 @@ from hilot.domain.interfaces.adapters.messenger import (
 )
 from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
 from hilot.domain.value_objects.download import DownloadRequest, DownloadTrigger
-from hilot.domain.value_objects.message import Link, MessageId, SourceMessage
+from hilot.domain.value_objects.message import (
+    AnswerKind,
+    CommandAnswer,
+    Link,
+    MessageId,
+    SourceMessage,
+)
 
 # a share link leads to the link of its post through a couple of redirects
 _MAX_REDIRECTS: int = 5
@@ -70,7 +76,10 @@ class RequestDownload:
         if not links:
             if request.is_commanded():
                 await self._command_answerer.answer_command(
-                    source=request.source, text=self._failure_formatter.format_no_links()
+                    source=request.source,
+                    answer=CommandAnswer(
+                        kind=AnswerKind.ERROR, entries=[self._failure_formatter.format_no_links()]
+                    ),
                 )
 
             return

@@ -9,7 +9,7 @@ class ChatFailureFormatter(FailureFormatter):
         FailureReason.LOGIN_REQUIRED: "it's private or needs a login",
         FailureReason.GEO_RESTRICTED: "not available in my region",
         FailureReason.UNAVAILABLE: "couldn't download it",
-        FailureReason.BUG: "something broke on my side",
+        FailureReason.BUG: "something broke",
     }
 
     @override
@@ -25,15 +25,15 @@ class ChatFailureFormatter(FailureFormatter):
         )
 
     @override
-    def format_failures(self, *, failures: list[Failure], size_limit: int) -> str:
+    def format_failures(self, *, failures: list[Failure], size_limit: int) -> list[str]:
         if len(failures) == 1:
-            return self.format_failure(failure=failures[0], size_limit=size_limit)
+            return [self.format_failure(failure=failures[0], size_limit=size_limit)]
 
-        # several failures go into one message, each after its link
-        return "\n".join(
+        # several failures name their links
+        return [
             f"{failure.link.text}: {self.format_failure(failure=failure, size_limit=size_limit)}"
             for failure in failures
-        )
+        ]
 
     @override
     def format_no_links(self) -> str:

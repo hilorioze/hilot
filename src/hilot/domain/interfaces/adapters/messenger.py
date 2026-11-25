@@ -3,7 +3,13 @@ from typing import Protocol
 
 from hilot.domain.entities.cached_file import CachedFile
 from hilot.domain.value_objects.media import AttachedMedia, FileId, StoredMedia
-from hilot.domain.value_objects.message import ChatId, Link, MessageId, SourceMessage
+from hilot.domain.value_objects.message import (
+    ChatId,
+    CommandAnswer,
+    Link,
+    MessageId,
+    SourceMessage,
+)
 
 
 class ProgressIndicator(Protocol):
@@ -50,6 +56,10 @@ class TextSender(Protocol):
     ) -> None: ...
 
 
+class TextEditor(Protocol):
+    async def edit_text(self, *, source: SourceMessage, text: str) -> None: ...
+
+
 # the answer goes under the command, which shows that the owner called it
 class CommandAnswerer(Protocol):
-    async def answer_command(self, *, source: SourceMessage, text: str) -> None: ...
+    async def answer_command(self, *, source: SourceMessage, answer: CommandAnswer) -> None: ...

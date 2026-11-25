@@ -33,7 +33,13 @@ from hilot.domain.value_objects.download import (
     Failure,
 )
 from hilot.domain.value_objects.media import FileId, MediaKind, StoredMedia
-from hilot.domain.value_objects.message import Link, MessageId, SourceMessage
+from hilot.domain.value_objects.message import (
+    AnswerKind,
+    CommandAnswer,
+    Link,
+    MessageId,
+    SourceMessage,
+)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -143,8 +149,11 @@ class DeliverMedia:
         if request.answers_in_command() and result.failures:
             await self._command_answerer.answer_command(
                 source=source,
-                text=self._failure_formatter.format_failures(
-                    failures=result.failures, size_limit=request.size_limit
+                answer=CommandAnswer(
+                    kind=AnswerKind.ERROR,
+                    entries=self._failure_formatter.format_failures(
+                        failures=result.failures, size_limit=request.size_limit
+                    ),
                 ),
             )
 

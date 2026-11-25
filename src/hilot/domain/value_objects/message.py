@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import NewType
 
 AccountId = NewType("AccountId", int)
@@ -39,3 +40,15 @@ class Link:
 
     # the preview of the message plays the link's video on every client by itself
     has_video_preview: bool
+
+
+class AnswerKind(StrEnum):
+    RESULT = "result"
+    ERROR = "error"
+
+
+# what a command did, which goes under the command so that its text stays in sight
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CommandAnswer:
+    kind: AnswerKind
+    entries: list[str]

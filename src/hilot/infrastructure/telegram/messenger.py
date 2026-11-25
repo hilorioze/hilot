@@ -54,13 +54,13 @@ from hilot.domain.errors.messenger import (
     MessageGoneError,
 )
 from hilot.domain.interfaces.adapters.messenger import (
-    CommandAnswerer,
     MediaRefresher,
     MediaSender,
     MediaUploader,
     MessageMediaReader,
     MessageReader,
     ProgressIndicator,
+    TextEditor,
     TextSender,
     UploadLimitReader,
 )
@@ -77,7 +77,7 @@ class KurigramMessenger(
     MediaSender,
     MediaRefresher,
     TextSender,
-    CommandAnswerer,
+    TextEditor,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
 
@@ -256,13 +256,13 @@ class KurigramMessenger(
             )
 
     @override
-    async def answer_command(self, *, source: SourceMessage, text: str) -> None:
+    async def edit_text(self, *, source: SourceMessage, text: str) -> None:
         # the text of a media message is its caption; a redelivered answer finds its text already in place
         with suppress(MessageNotModified):
             await self._client.edit_message_text(
                 chat_id=source.chat_id,
                 message_id=source.message_id,
-                text=f"{source.text}\n\n{text}",
+                text=text,
                 parse_mode=ParseMode.DISABLED,  # kurigram parses markdown and html by default, which a link's underscores would break
             )
 

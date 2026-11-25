@@ -12,7 +12,12 @@ from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormat
 from hilot.domain.interfaces.adapters.watermark_scheduler import WatermarkCheckScheduler
 from hilot.domain.interfaces.adapters.workspace import Workspace
 from hilot.domain.value_objects.media import AttachedMedia, StorageKey
-from hilot.domain.value_objects.message import MessageId, SourceMessage
+from hilot.domain.value_objects.message import (
+    AnswerKind,
+    CommandAnswer,
+    MessageId,
+    SourceMessage,
+)
 from hilot.domain.value_objects.watermark import WatermarkCheckRequest, WatermarkFailure
 
 
@@ -87,5 +92,8 @@ class RequestWatermarkCheck:
 
     async def _reply_failure(self, *, source: SourceMessage, failure: WatermarkFailure) -> None:
         await self._command_answerer.answer_command(
-            source=source, text=self._watermark_formatter.format_outcome(failure)
+            source=source,
+            answer=CommandAnswer(
+                kind=AnswerKind.ERROR, entries=[self._watermark_formatter.format_outcome(failure)]
+            ),
         )

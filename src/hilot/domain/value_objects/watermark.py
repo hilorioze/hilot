@@ -76,3 +76,7 @@ class WatermarkReply:
     source: SourceMessage
 
     outcome: WatermarkCheck | WatermarkQuotaExceeded | WatermarkFailure
+
+    # a check that ran has a verdict, the others couldn't check the media
+    def is_verdict(self) -> bool:
+        return isinstance(self.outcome, WatermarkCheck)

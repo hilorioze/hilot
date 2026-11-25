@@ -11,6 +11,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MessageMediaReader,
     MessageReader,
     ProgressIndicator,
+    TextEditor,
     TextSender,
     UploadLimitReader,
 )
@@ -21,6 +22,7 @@ from hilot.infrastructure.telegram.client import create_client
 from hilot.infrastructure.telegram.messenger import KurigramMessenger
 from hilot.infrastructure.telegram.storage import SQLStorage
 from hilot.main.config.telegram import TelegramConfig
+from hilot.presentation.telegram.command_answerer import ChatCommandAnswerer
 
 
 class SessionProvider(Provider):
@@ -66,9 +68,10 @@ class TelegramProvider(Provider):
             MediaSender,
             MediaRefresher,
             TextSender,
-            CommandAnswerer,
+            TextEditor,
         ],
         scope=Scope.APP,
     )
+    command_answerer = provide(ChatCommandAnswerer, provides=CommandAnswerer, scope=Scope.APP)
 
     chat_bot = provide(KurigramChatBot, provides=ChatBot, scope=Scope.APP)
