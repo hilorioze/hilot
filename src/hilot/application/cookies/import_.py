@@ -2,12 +2,13 @@ from dataclasses import dataclass
 
 from hilot.domain.interfaces.repositories.cookie import CookieRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
-from hilot.domain.value_objects.cookie import Cookie
+from hilot.domain.value_objects.cookie import Cookie, CookieSource
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ImportCookiesDTO:
     cookies: list[Cookie]
+    source: CookieSource
 
 
 class ImportCookies:
@@ -23,7 +24,9 @@ class ImportCookies:
 
             # a fresh login replaces every cookie of its site
             await self._cookie_repository.delete(
-                [cookie for cookie in cookies if cookie.domain in domains]
+                cookies
+                if data.source == CookieSource.BROWSER
+                else [cookie for cookie in cookies if cookie.domain in domains]
             )
 
             await self._cookie_repository.save(data.cookies)

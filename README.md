@@ -29,7 +29,7 @@ The checks take every synthid.com account signed in from the browser of `hilot-d
 - `hilot-transcoder`: converts the media Telegram can't play to H.264, AAC and JPEG
 - `hilot-detector`: checks the media for a SynthID watermark on synthid.com, with the accounts signed in from its browser
 - `hilot-login`: logs in with a QR code, or with a phone number on the test backend, and prints the session string
-- `hilot-cookies <cookies.txt>`: stores the cookies of a logged in browser for the sites that need a login
+- `hilot-cookies <cookies.txt>`: stores the cookies of a logged in browser for the sites that need a login, replacing the stored cookies of the sites in the file; with `--whole-browser` the file holds the whole browser, so the sites missing from it lose their stored cookies too
 - `hilot-migrate`: [Alembic](https://alembic.sqlalchemy.org/) for the database, e.g. `hilot-migrate upgrade head`
 
 The commands share PostgreSQL, [NATS](https://nats.io/) with JetStream and an S3 bucket; there is one `hilot-bot` per Telegram account. The workers serve `/healthz` and Prometheus `/metrics` on their `http` address.
