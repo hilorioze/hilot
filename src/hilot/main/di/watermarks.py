@@ -7,7 +7,13 @@ from hilot.domain.interfaces.adapters.watermark_detector import (
     DetectableMediaMatcher,
     WatermarkDetector,
 )
+from hilot.domain.interfaces.repositories.cached_watermark_check import (
+    CachedWatermarkCheckRepository,
+)
 from hilot.domain.interfaces.repositories.detection_account import DetectionAccountRepository
+from hilot.infrastructure.database.sql.repositories.cached_watermark_check import (
+    SQLCachedWatermarkCheckRepository,
+)
 from hilot.infrastructure.database.sql.repositories.detection_account import (
     SQLDetectionAccountRepository,
 )
@@ -47,4 +53,12 @@ class WatermarkDetectorProvider(Provider):
 class DetectionAccountProvider(Provider):
     account_repository = provide(
         SQLDetectionAccountRepository, provides=DetectionAccountRepository, scope=Scope.REQUEST
+    )
+
+
+class CachedWatermarkCheckProvider(Provider):
+    cached_watermark_check_repository = provide(
+        SQLCachedWatermarkCheckRepository,
+        provides=CachedWatermarkCheckRepository,
+        scope=Scope.REQUEST,
     )

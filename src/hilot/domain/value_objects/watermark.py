@@ -108,10 +108,8 @@ class WatermarkCheckRequest:
     # the command, which the reply goes under
     source: SourceMessage
 
-    targets: list[WatermarkTarget]
-
-    # the outcomes known before the check, like the links that couldn't be downloaded
-    failures: list[WatermarkResult]
+    # each media in its order: a file to check, or its outcome known before the check, like a link that couldn't be downloaded or a verdict from before
+    media: list[WatermarkTarget | WatermarkResult]
 
     @classmethod
     def from_download(cls, result: DownloadResult) -> Self:
@@ -146,8 +144,7 @@ class WatermarkCheckRequest:
 
         return cls(
             source=result.request.source,
-            targets=targets,
-            failures=failures
+            media=[*targets, *failures]
             if targets or failures
             else [WatermarkResult(label=MediaLabel.empty(), outcome=WatermarkFailure.NOT_FOUND)],
         )

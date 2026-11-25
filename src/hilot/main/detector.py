@@ -21,10 +21,11 @@ from .config.schemas import DetectorSchema
 from .config.worker import DetectorConfig
 from .di.database import DatabaseProvider
 from .di.encryption import EncryptionProvider
-from .di.media import WorkspaceProvider
+from .di.media import FileHasherProvider, WorkspaceProvider
 from .di.queue import QueueProvider
 from .di.s3 import S3Provider
 from .di.watermarks import (
+    CachedWatermarkCheckProvider,
     DetectableMediaMatcherProvider,
     DetectionAccountProvider,
     WatermarkDetectorProvider,
@@ -47,9 +48,11 @@ async def run() -> None:
         S3Provider(),
         QueueProvider(),
         WorkspaceProvider(),
+        FileHasherProvider(),
         DetectableMediaMatcherProvider(),
         WatermarkDetectorProvider(),
         DetectionAccountProvider(),
+        CachedWatermarkCheckProvider(),
         _InteractorProvider(),
         context={
             DatabaseConfig: schema.database,

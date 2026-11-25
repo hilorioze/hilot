@@ -4,12 +4,14 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import ClassVar
 
+from hilot.domain.entities.cached_watermark_check import CachedWatermarkCheck
 from hilot.domain.entities.detection_account import DetectionAccount
 from hilot.domain.errors.watermark import (
     DetectionAccountRevokedError,
     DetectionQuotaExceededError,
     NoDetectionAccountsError,
 )
+from hilot.domain.interfaces.adapters.file_hasher import FileHasher
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.watermark_detector import (
     DetectableMediaMatcher,
@@ -17,9 +19,12 @@ from hilot.domain.interfaces.adapters.watermark_detector import (
 )
 from hilot.domain.interfaces.adapters.watermark_scheduler import WatermarkReplyScheduler
 from hilot.domain.interfaces.adapters.workspace import Workspace
+from hilot.domain.interfaces.repositories.cached_watermark_check import (
+    CachedWatermarkCheckRepository,
+)
 from hilot.domain.interfaces.repositories.detection_account import DetectionAccountRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
-from hilot.domain.value_objects.media import MediaKind
+from hilot.domain.value_objects.media import ContentHash, MediaKind
 from hilot.domain.value_objects.watermark import (
     WatermarkCheck,
     WatermarkCheckRequest,
@@ -28,6 +33,7 @@ from hilot.domain.value_objects.watermark import (
     WatermarkReply,
     WatermarkResult,
     WatermarkTarget,
+    WatermarkVerdict,
 )
 
 from .media import find_media_failure
@@ -48,27 +54,35 @@ class CheckWatermark:
         watermark_detector: WatermarkDetector,
         media_matcher: DetectableMediaMatcher,
         account_repository: DetectionAccountRepository,
+        cached_watermark_check_repository: CachedWatermarkCheckRepository,
         uow: UnitOfWork,
         workspace: Workspace,
         file_storage: FileStorage,
+        file_hasher: FileHasher,
         reply_scheduler: WatermarkReplyScheduler,
     ) -> None:
         self._watermark_detector: WatermarkDetector = watermark_detector
         self._media_matcher: DetectableMediaMatcher = media_matcher
         self._account_repository: DetectionAccountRepository = account_repository
+        self._cached_watermark_check_repository: CachedWatermarkCheckRepository = (
+            cached_watermark_check_repository
+        )
         self._uow: UnitOfWork = uow
         self._workspace: Workspace = workspace
         self._file_storage: FileStorage = file_storage
+        self._file_hasher: FileHasher = file_hasher
         self._reply_scheduler: WatermarkReplyScheduler = reply_scheduler
 
     async def __call__(self, data: CheckWatermarkDTO) -> None:
         results: list[WatermarkResult] = [
-            WatermarkResult(label=target.label, outcome=await self._check_target(target))
-            for target in data.request.targets
+            item
+            if isinstance(item, WatermarkResult)
+            else WatermarkResult(label=item.label, outcome=await self._check_target(item))
+            for item in data.request.media
         ]
 
         await self._reply_scheduler.schedule_reply(
-            WatermarkReply(source=data.request.source, results=[*results, *data.request.failures])
+            WatermarkReply(source=data.request.source, results=results)
         )
 
     async def _check_target(
@@ -87,12 +101,41 @@ class CheckWatermark:
                 path: Path = directory / "media"
                 await self._file_storage.download(key=target.storage_key, path=path)
 
-                return await self._detect(path=path, mime_type=target.mime_type)
+                return await self._check_file(path=path, mime_type=target.mime_type)
         except DetectionQuotaExceededError as error:
             return WatermarkQuotaExceeded(retry_after=error.retry_after)
         finally:
             if not target.is_shared:
                 await self._file_storage.delete(target.storage_key)
+
+    # the same content, forwarded or sent again by a link, gets its verdict from before
+    async def _check_file(self, *, path: Path, mime_type: str) -> WatermarkCheck:
+        content_hash: ContentHash = await self._file_hasher.hash_file(path)
+
+        async with self._uow:
+            cached_watermark_check: (
+                CachedWatermarkCheck | None
+            ) = await self._cached_watermark_check_repository.get(content_hash)
+
+        if cached_watermark_check is not None and cached_watermark_check.is_fresh(
+            datetime.now(UTC)
+        ):
+            return cached_watermark_check.check
+
+        check: WatermarkCheck = await self._detect(path=path, mime_type=mime_type)
+
+        # an undetermined verdict is what improvements of the detector fix, so it isn't kept
+        if check.verdict == WatermarkVerdict.UNDETERMINED:
+            return check
+
+        async with self._uow:
+            await self._cached_watermark_check_repository.save(
+                CachedWatermarkCheck(
+                    content_hash=content_hash, check=check, checked_at=datetime.now(UTC)
+                )
+            )
+
+        return check
 
     async def _detect(self, *, path: Path, mime_type: str) -> WatermarkCheck:
         kind: MediaKind = self._media_matcher.get_kind(mime_type)

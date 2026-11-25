@@ -5,11 +5,15 @@ from adaptix import P, Retort, dumper, name_mapping
 from adaptix.conversion import ConversionRetort, coercer, get_converter, link_function
 
 from hilot.domain.entities.cached_file import CachedFile
+from hilot.domain.entities.cached_watermark_check import CachedWatermarkCheck
 from hilot.domain.entities.delivered_part import DeliveredPart
 from hilot.domain.entities.stored_file import StoredFile
+from hilot.domain.entities.telegram_file_hash import TelegramFileHash
 from hilot.domain.value_objects.cookie import Cookie
 from hilot.domain.value_objects.media import (
+    ContentHash,
     FileId,
+    FileUniqueId,
     MediaInfo,
     MediaKey,
     MediaKind,
@@ -17,12 +21,15 @@ from hilot.domain.value_objects.media import (
     StorageKey,
 )
 from hilot.domain.value_objects.message import AccountId, ChatId, MessageId
+from hilot.domain.value_objects.watermark import WatermarkCheck
 
 from .models import (
     CachedFileModel,
+    CachedWatermarkCheckModel,
     CookieModel,
     DeliveredPartModel,
     StoredFileModel,
+    TelegramFileHashModel,
 )
 
 
@@ -40,6 +47,8 @@ _CONVERTERS: ConversionRetort = ConversionRetort(
         coercer(int, MessageId, MessageId),
         coercer(str, FileId, FileId),
         coercer(str, StorageKey, StorageKey),
+        coercer(str, FileUniqueId, FileUniqueId),
+        coercer(str, ContentHash, ContentHash),
         link_function(get_converter(CachedFileModel, MediaKey), P[CachedFile].media_key),
         link_function(get_converter(CachedFileModel, MediaInfo), P[CachedFile].info),
         link_function(_get_post, P[CachedFile].post),
@@ -65,6 +74,8 @@ _ROW_RETORT: Retort = Retort(
         dumper(MediaKind, lambda kind: kind),
     ],
 )
+# a verdict goes into one json column as a whole
+_JSON_RETORT: Retort = Retort()
 
 convert_cached_file_model_to_entity: Callable[[CachedFileModel], CachedFile] = (
     _CONVERTERS.get_converter(CachedFileModel, CachedFile)
@@ -75,6 +86,19 @@ convert_delivered_part_model_to_entity: Callable[[DeliveredPartModel], Delivered
 convert_stored_file_model_to_entity: Callable[[StoredFileModel], StoredFile] = (
     _CONVERTERS.get_converter(StoredFileModel, StoredFile)
 )
+convert_telegram_file_hash_model_to_entity: Callable[[TelegramFileHashModel], TelegramFileHash] = (
+    _CONVERTERS.get_converter(TelegramFileHashModel, TelegramFileHash)
+)
+
+
+def convert_cached_watermark_check_model_to_entity(
+    model: CachedWatermarkCheckModel,
+) -> CachedWatermarkCheck:
+    return CachedWatermarkCheck(
+        content_hash=ContentHash(model.content_hash),
+        check=_JSON_RETORT.load(model.check, WatermarkCheck),
+        checked_at=model.checked_at,
+    )
 
 
 @_CONVERTERS.impl_converter
@@ -103,5 +127,21 @@ def convert_stored_file_entity_to_row(stored_file: StoredFile) -> dict[str, Any]
     )
 
 
+def convert_telegram_file_hash_entity_to_row(
+    telegram_file_hash: TelegramFileHash,
+) -> dict[str, Any]:
+    return _ROW_RETORT.dump(telegram_file_hash)
+
+
 def convert_cookie_entity_to_row(*, cookie: Cookie, encrypted_value: bytes) -> dict[str, Any]:
     return _ROW_RETORT.dump(cookie) | {"encrypted_value": encrypted_value}
+
+
+def convert_cached_watermark_check_entity_to_row(
+    cached_watermark_check: CachedWatermarkCheck,
+) -> dict[str, Any]:
+    return {
+        "content_hash": cached_watermark_check.content_hash,
+        "check": _JSON_RETORT.dump(cached_watermark_check.check),
+        "checked_at": cached_watermark_check.checked_at,
+    }

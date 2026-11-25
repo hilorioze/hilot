@@ -6,7 +6,11 @@ from .message import Link
 from .text import RichText
 
 FileId = NewType("FileId", str)
+# telegram's id of a file itself, the same in every chat and for every account, unlike its `FileId`
+FileUniqueId = NewType("FileUniqueId", str)
 StorageKey = NewType("StorageKey", str)
+# the sha-256 of the content of a file, which names it whatever chat or link it comes from
+ContentHash = NewType("ContentHash", str)
 
 
 class MediaKind(StrEnum):
@@ -82,6 +86,7 @@ class OutgoingMedia:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class AttachedMedia:
     file_id: FileId
+    file_unique_id: FileUniqueId
 
     mime_type: str
     size: int

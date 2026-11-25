@@ -85,6 +85,7 @@ from hilot.domain.interfaces.adapters.messenger import (
 from hilot.domain.value_objects.media import (
     AttachedMedia,
     FileId,
+    FileUniqueId,
     MediaKind,
     OutgoingMedia,
     StoredMedia,
@@ -249,6 +250,7 @@ class KurigramMessenger(
 
         return AttachedMedia(
             file_id=FileId(media.file_id),
+            file_unique_id=FileUniqueId(media.file_unique_id),
             # telegram keeps every photo as a jpeg, so it has no type of its own
             mime_type="image/jpeg"
             if holder.media == MessageMediaType.PHOTO

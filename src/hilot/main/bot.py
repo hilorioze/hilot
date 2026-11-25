@@ -49,11 +49,11 @@ from .di.formatters import FormatterProvider
 from .di.handlers import HandlerProvider
 from .di.http import RedirectReaderProvider
 from .di.inline_bot import InlineBotProvider
-from .di.media import WorkspaceProvider
+from .di.media import FileHasherProvider, TelegramFileHashProvider, WorkspaceProvider
 from .di.queue import QueueProvider
 from .di.s3 import S3Provider
 from .di.telegram import SessionProvider, TelegramProvider
-from .di.watermarks import DetectableMediaMatcherProvider
+from .di.watermarks import CachedWatermarkCheckProvider, DetectableMediaMatcherProvider
 from .worker import configure_logging, run_worker
 
 
@@ -92,6 +92,9 @@ async def run() -> None:
         RedirectReaderProvider(),
         DetectableMediaMatcherProvider(),
         WorkspaceProvider(),
+        FileHasherProvider(),
+        TelegramFileHashProvider(),
+        CachedWatermarkCheckProvider(),
         _InteractorProvider(),
         context={
             DatabaseConfig: schema.database,
