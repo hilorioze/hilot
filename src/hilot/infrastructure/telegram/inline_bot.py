@@ -1,11 +1,14 @@
+import logging
 import re
+from collections.abc import Generator
+from contextlib import contextmanager
 from html import escape
 from itertools import groupby
 from pathlib import Path
 from typing import ClassVar, cast, override
 
 from aiogram import Bot
-from aiogram.exceptions import TelegramForbiddenError
+from aiogram.exceptions import AiogramError, TelegramForbiddenError
 from aiogram.types import (
     Audio,
     FSInputFile,
@@ -50,6 +53,22 @@ from hilot.domain.value_objects.text import RichText, TextPart, TextStyle
 
 from .random_id import ANSWER_PART, get_random_id
 
+_logger: logging.Logger = logging.getLogger(__name__)
+
+
+# the account sends plainly whatever keeps the bot from a rich message
+@contextmanager
+def _fall_back_to_plain() -> Generator[None]:
+    try:
+        yield
+    # the bot can't message an account that hasn't started it
+    except TelegramForbiddenError as error:
+        raise RichUnavailableError from error
+    except AiogramError as error:
+        _logger.exception("the inline bot failed to make a rich message")
+
+        raise RichUnavailableError from error
+
 
 class InlineBotRichMessenger(RichLimitReader, RichMediaUploader, RichSender, RichReplier):
     # the html tags of the media blocks of a rich message
@@ -88,13 +107,9 @@ class InlineBotRichMessenger(RichLimitReader, RichMediaUploader, RichSender, Ric
     ) -> FileId:
         file: FSInputFile = FSInputFile(path)
 
-        # the bot can't message an account that hasn't started it
-        try:
+        with _fall_back_to_plain():
             message: Message = await self._send_file(account_id=account_id, media=media, file=file)
-        except TelegramForbiddenError as error:
-            raise RichUnavailableError from error
-
-        await self._bot.delete_message(chat_id=account_id, message_id=message.message_id)
+            await self._bot.delete_message(chat_id=account_id, message_id=message.message_id)
 
         # a photo comes in several sizes, the largest one last
         match media.kind:
@@ -189,24 +204,24 @@ class InlineBotRichMessenger(RichLimitReader, RichMediaUploader, RichSender, Ric
     async def _prepare(
         self, *, source: SourceMessage, message: RichMessage
     ) -> PreparedInlineMessage:
-        prepared: BotPreparedInlineMessage = await self._bot.save_prepared_inline_message(
-            user_id=source.account_id,
-            result=InlineQueryResultArticle(
-                id=self._RESULT_ID,
-                title=self._RESULT_ID,
-                input_message_content=InputRichMessageContent(
-                    rich_message=self._create_rich_message(message)
+        with _fall_back_to_plain():
+            prepared: BotPreparedInlineMessage = await self._bot.save_prepared_inline_message(
+                user_id=source.account_id,
+                result=InlineQueryResultArticle(
+                    id=self._RESULT_ID,
+                    title=self._RESULT_ID,
+                    input_message_content=InputRichMessageContent(
+                        rich_message=self._create_rich_message(message)
+                    ),
                 ),
-            ),
-            allow_user_chats=source.chat_kind == ChatKind.PRIVATE,
-            allow_bot_chats=source.chat_kind == ChatKind.BOT,
-            allow_group_chats=source.chat_kind == ChatKind.GROUP,
-            allow_channel_chats=source.chat_kind == ChatKind.CHANNEL,
-        )
+                allow_user_chats=source.chat_kind == ChatKind.PRIVATE,
+                allow_bot_chats=source.chat_kind == ChatKind.BOT,
+                allow_group_chats=source.chat_kind == ChatKind.GROUP,
+                allow_channel_chats=source.chat_kind == ChatKind.CHANNEL,
+            )
+            bot_user: InputUser = await self._get_bot_user()
 
-        return await self._client.invoke(
-            GetPreparedInlineMessage(bot=await self._get_bot_user(), id=prepared.id)
-        )
+        return await self._client.invoke(GetPreparedInlineMessage(bot=bot_user, id=prepared.id))
 
     async def _get_bot_user(self) -> InputUser:
         peer: InputPeerUser = cast(
