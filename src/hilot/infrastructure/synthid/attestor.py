@@ -30,6 +30,14 @@ async (row) => {
 }
 """
 
+# the page asks a browser to agree to its terms before the first detection, and keeps on detecting after the agreement
+_AGREE_TO_TERMS: str = """
+new MutationObserver(() => document.querySelector("terms-of-service .agree-btn")?.click()).observe(document, {
+  childList: true,
+  subtree: true,
+});
+"""
+
 # the page renders its file input after loading
 _WAIT_FOR_FILE_INPUT: str = """
 new Promise((resolve) => {
@@ -113,6 +121,9 @@ class SynthIDAttestor:
 
             attestor: SynthIDAttestor = cls(cdp=cdp, session_id=attached["sessionId"])
             await attestor._send("Page.enable", {})
+            await attestor._send(
+                "Page.addScriptToEvaluateOnNewDocument", {"source": _AGREE_TO_TERMS}
+            )
             await attestor._send("Fetch.enable", {"patterns": [{"urlPattern": "*"}]})
 
             yield attestor
