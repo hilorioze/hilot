@@ -40,6 +40,7 @@ from pyrogram.raw.types.input_single_media import InputSingleMedia
 from pyrogram.raw.types.message_entity_text_url import MessageEntityTextUrl
 from pyrogram.raw.types.message_media_document import MessageMediaDocument
 from pyrogram.raw.types.message_media_photo import MessageMediaPhoto
+from pyrogram.raw.types.message_media_web_page import MessageMediaWebPage
 from pyrogram.raw.types.photo import Photo
 from pyrogram.raw.types.send_message_upload_document_action import (
     SendMessageUploadDocumentAction,
@@ -48,6 +49,7 @@ from pyrogram.raw.types.send_message_upload_photo_action import SendMessageUploa
 from pyrogram.raw.types.send_message_upload_video_action import SendMessageUploadVideoAction
 from pyrogram.raw.types.update_message_id import UpdateMessageID
 from pyrogram.raw.types.updates_t import Updates
+from pyrogram.raw.types.web_page_pending import WebPagePending
 from pyrogram.utils import get_input_media_from_file_id, get_raw_peer_id
 
 from hilot.domain.entities.cached_file import CachedFile
@@ -58,6 +60,7 @@ from hilot.domain.errors.messenger import (
 )
 from hilot.domain.interfaces.adapters.messenger import (
     CaptionLimitReader,
+    LinkPreviewReader,
     MediaRefresher,
     MediaSender,
     MediaUploader,
@@ -80,6 +83,7 @@ from hilot.domain.value_objects.media import (
 from hilot.domain.value_objects.message import (
     ChatId,
     Link,
+    LinkPreview,
     MediaLocation,
     MessageId,
     SourceMessage,
@@ -90,6 +94,7 @@ from hilot.domain.value_objects.text import RichText
 class KurigramMessenger(
     ProgressIndicator,
     MessageReader,
+    LinkPreviewReader,
     MessageMediaReader,
     UploadLimitReader,
     CaptionLimitReader,
@@ -157,6 +162,24 @@ class KurigramMessenger(
             return False
 
         return True
+
+    @override
+    async def read_link_preview(self, source: SourceMessage) -> LinkPreview | None:
+        message: types.Message = await self._get_message(
+            chat_id=source.chat_id, message_id=source.message_id
+        )
+        web_page: types.WebPage | None = message.web_page
+
+        if web_page is None:
+            return None
+
+        return LinkPreview(
+            url=web_page.url,
+            # kurigram parses a preview telegram still builds as one without media
+            is_pending=isinstance(cast(MessageMediaWebPage, web_page.raw).webpage, WebPagePending),
+            plays_video=bool(web_page.prefer_large_media)
+            and (web_page.video is not None or web_page.animation is not None),
+        )
 
     @override
     async def read_media(self, location: MediaLocation) -> AttachedMedia | None:

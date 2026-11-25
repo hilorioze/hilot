@@ -7,6 +7,7 @@ from hilot.domain.value_objects.message import (
     ChatId,
     CommandAnswer,
     Link,
+    LinkPreview,
     MediaLocation,
     MessageId,
     SourceMessage,
@@ -22,6 +23,10 @@ class ProgressIndicator(Protocol):
 
 class MessageReader(Protocol):
     async def message_exists(self, source: SourceMessage) -> bool: ...
+
+
+class LinkPreviewReader(Protocol):
+    async def read_link_preview(self, source: SourceMessage) -> LinkPreview | None: ...
 
 
 class MessageMediaReader(Protocol):

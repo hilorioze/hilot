@@ -1,20 +1,29 @@
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.messenger import (
     CommandAnswerer,
+    LinkPreviewReader,
     ProgressIndicator,
     UploadLimitReader,
 )
+from hilot.domain.interfaces.adapters.preview_wait_scheduler import PreviewWaitScheduler
 from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
-from hilot.domain.value_objects.download import DownloadRequest, DownloadTrigger
+from hilot.domain.value_objects.download import (
+    LINK_PREVIEW_TIMEOUT,
+    DownloadRequest,
+    DownloadTrigger,
+    PreviewWait,
+)
 from hilot.domain.value_objects.message import (
     AnswerEntry,
     AnswerKind,
     CommandAnswer,
     Link,
+    LinkPreview,
     MessageId,
     SourceMessage,
 )
@@ -39,6 +48,8 @@ class RequestDownload:
         *,
         link_matcher: LinkMatcher,
         redirect_reader: RedirectReader,
+        link_preview_reader: LinkPreviewReader,
+        preview_wait_scheduler: PreviewWaitScheduler,
         progress_indicator: ProgressIndicator,
         command_answerer: CommandAnswerer,
         failure_formatter: FailureFormatter,
@@ -47,6 +58,8 @@ class RequestDownload:
     ) -> None:
         self._link_matcher: LinkMatcher = link_matcher
         self._redirect_reader: RedirectReader = redirect_reader
+        self._link_preview_reader: LinkPreviewReader = link_preview_reader
+        self._preview_wait_scheduler: PreviewWaitScheduler = preview_wait_scheduler
         self._progress_indicator: ProgressIndicator = progress_indicator
         self._command_answerer: CommandAnswerer = command_answerer
         self._failure_formatter: FailureFormatter = failure_formatter
@@ -54,11 +67,29 @@ class RequestDownload:
         self._download_scheduler: DownloadScheduler = download_scheduler
 
     async def __call__(self, data: RequestDownloadDTO) -> None:
+        preview: LinkPreview | None = (
+            await self._link_preview_reader.read_link_preview(data.source)
+            if data.trigger == DownloadTrigger.LINK and data.links
+            else None
+        )
+
+        # the links of a message wait for the preview telegram still builds, until the timeout after the message
+        if (
+            preview is not None
+            and preview.is_pending
+            and datetime.now(UTC) < data.source.sent_at + LINK_PREVIEW_TIMEOUT
+        ):
+            await self._preview_wait_scheduler.schedule_preview_wait(
+                PreviewWait(source=data.source, links=data.links)
+            )
+
+            return
+
         links: list[Link] = []
 
         for link in data.links:
             # the preview plays the video by itself, unless the file is asked for
-            if link.has_video_preview and data.trigger == DownloadTrigger.LINK:
+            if preview is not None and preview.plays_video and link.url == preview.url:
                 continue
 
             url: str | None = await self._find_supported_url(link.url)

@@ -8,12 +8,13 @@ from adaptix import Retort
 from dishka.integrations.taskiq import FromDishka, inject
 from taskiq import Context, TaskiqDepends
 
+from hilot.application.media.await_preview import AwaitLinkPreview, AwaitLinkPreviewDTO
 from hilot.application.media.deliver import DeliverMedia, DeliverMediaDTO
 from hilot.application.media.download import DownloadMedia, DownloadMediaDTO
 from hilot.application.media.report_failure import ReportFailure, ReportFailureDTO
 from hilot.application.media.transcode import TranscodeMedia, TranscodeMediaDTO
 from hilot.domain.errors.disk_space import NotEnoughSpaceError
-from hilot.domain.value_objects.download import DownloadRequest, DownloadResult
+from hilot.domain.value_objects.download import DownloadRequest, DownloadResult, PreviewWait
 
 PostponeDelay = NewType("PostponeDelay", timedelta)
 
@@ -44,6 +45,16 @@ async def _report_failure(
         await interactor(ReportFailureDTO(request=request))
 
         raise
+
+
+@inject(patch_module=True)
+async def await_link_preview(
+    *,
+    payload: dict[str, Any],
+    retort: FromDishka[Retort],
+    interactor: FromDishka[AwaitLinkPreview],
+) -> None:
+    await interactor(AwaitLinkPreviewDTO(wait=retort.load(payload, PreviewWait)))
 
 
 @inject(patch_module=True)

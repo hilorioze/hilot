@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from typing import cast
 
 from pyrogram.enums import ChatType
@@ -19,4 +20,6 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         is_private=chat.type == ChatType.PRIVATE,
         is_saved_messages=chat.id == account_id,
         is_outgoing=bool(message.outgoing),
+        # kurigram returns naive dates in the local time zone
+        sent_at=cast(datetime, message.date).astimezone(UTC),
     )

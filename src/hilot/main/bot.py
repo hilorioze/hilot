@@ -5,16 +5,22 @@ from dishka import AsyncContainer, Provider, Scope, make_async_container, provid
 from pyrogram import Client
 
 from hilot.application.check_ins.check_in import RunCheckIn
+from hilot.application.media.await_preview import AwaitLinkPreview
 from hilot.application.media.deliver import DeliverMedia
 from hilot.application.media.request_download import RequestDownload
 from hilot.application.watermarks.reply import ReplyWatermarkCheck
 from hilot.application.watermarks.request_check import RequestWatermarkCheck
 from hilot.domain.value_objects.check_in import CheckIn
 from hilot.domain.value_objects.message import AccountId
-from hilot.infrastructure.queue.routes import Route, get_delivery_route, get_watermark_reply_route
+from hilot.infrastructure.queue.routes import (
+    Route,
+    get_delivery_route,
+    get_preview_wait_route,
+    get_watermark_reply_route,
+)
 from hilot.infrastructure.telegram.authorization import Authorization
 from hilot.presentation.schedule.check_ins import run_check_ins
-from hilot.presentation.taskiq.media import deliver_media
+from hilot.presentation.taskiq.media import await_link_preview, deliver_media
 from hilot.presentation.taskiq.watermarks import reply_watermark_check
 
 from .config.database import DatabaseConfig
@@ -41,7 +47,12 @@ class _InteractorProvider(Provider):
     scope = Scope.REQUEST
 
     interactors = provide_all(
-        RequestDownload, DeliverMedia, RequestWatermarkCheck, ReplyWatermarkCheck, RunCheckIn
+        RequestDownload,
+        AwaitLinkPreview,
+        DeliverMedia,
+        RequestWatermarkCheck,
+        ReplyWatermarkCheck,
+        RunCheckIn,
     )
 
 
@@ -97,6 +108,7 @@ async def run() -> None:
             container=container,
             config=schema.bot,
             tasks={
+                get_preview_wait_route(account_id): await_link_preview,
                 get_delivery_route(account_id): deliver_media,
                 get_watermark_reply_route(account_id): reply_watermark_check,
             },

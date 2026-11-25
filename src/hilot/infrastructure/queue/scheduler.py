@@ -6,12 +6,13 @@ from taskiq.kicker import AsyncKicker
 
 from hilot.domain.interfaces.adapters.delivery_scheduler import DeliveryScheduler
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
+from hilot.domain.interfaces.adapters.preview_wait_scheduler import PreviewWaitScheduler
 from hilot.domain.interfaces.adapters.transcode_scheduler import TranscodeScheduler
 from hilot.domain.interfaces.adapters.watermark_scheduler import (
     WatermarkCheckScheduler,
     WatermarkReplyScheduler,
 )
-from hilot.domain.value_objects.download import DownloadRequest, DownloadResult
+from hilot.domain.value_objects.download import DownloadRequest, DownloadResult, PreviewWait
 from hilot.domain.value_objects.watermark import WatermarkCheckRequest, WatermarkReply
 
 from .routes import (
@@ -20,11 +21,13 @@ from .routes import (
     WATERMARK_ROUTE,
     Route,
     get_delivery_route,
+    get_preview_wait_route,
     get_watermark_reply_route,
 )
 
 
 class TaskiqScheduler(
+    PreviewWaitScheduler,
     DownloadScheduler,
     TranscodeScheduler,
     DeliveryScheduler,
@@ -34,6 +37,12 @@ class TaskiqScheduler(
     def __init__(self, *, broker: AsyncBroker, retort: Retort) -> None:
         self._broker: AsyncBroker = broker
         self._retort: Retort = retort
+
+    @override
+    async def schedule_preview_wait(self, wait: PreviewWait) -> None:
+        await self._kick(
+            route=get_preview_wait_route(wait.source.account_id), payload=self._retort.dump(wait)
+        )
 
     @override
     async def schedule_download(self, request: DownloadRequest) -> None:

@@ -31,6 +31,11 @@ def get_delivery_route(account_id: AccountId) -> Route:
     )
 
 
+def get_preview_wait_route(account_id: AccountId) -> Route:
+    # only the account reads the preview of its message
+    return replace(get_delivery_route(account_id), task_name="await_link_preview")
+
+
 def get_watermark_reply_route(account_id: AccountId) -> Route:
     # only the account can edit its command, so the reply goes through its delivery
     return replace(get_delivery_route(account_id), task_name="reply_watermark_check")

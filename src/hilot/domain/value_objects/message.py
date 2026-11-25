@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 from typing import NewType
 
@@ -23,6 +24,8 @@ class SourceMessage:
 
     # the owner's own message, which the account can edit; the other side of a private chat calls the commands too
     is_outgoing: bool
+
+    sent_at: datetime
 
     # reactions in saved messages are tags available only with premium
     def allows_reactions(self) -> bool:
@@ -52,8 +55,17 @@ class Link:
     text: str
     offset: int
 
-    # the preview of the message plays the link's video on every client by itself
-    has_video_preview: bool
+
+# telegram builds the preview of a link it hasn't seen yet after the message is sent and puts it in by an edit
+@dataclass(frozen=True, slots=True, kw_only=True)
+class LinkPreview:
+    # telegram may leave out the url of a preview it still builds
+    url: str | None
+
+    is_pending: bool
+
+    # only an enlarged preview plays its video on every client: telegram desktop opens the site from a small one
+    plays_video: bool
 
 
 class AnswerKind(StrEnum):

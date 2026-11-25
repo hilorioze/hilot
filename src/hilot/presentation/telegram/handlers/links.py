@@ -11,7 +11,6 @@ from pyrogram.types import (
     Message,
     MessageEntity,
     TextQuote,
-    WebPage,
 )
 from pyrogram.types.messages_and_media.message import Str
 
@@ -32,7 +31,6 @@ def _parse_links(message: Message) -> list[Link]:
     return _find_links(
         text=cast(Str | None, message.text or message.caption),
         entities=message.entities or message.caption_entities or [],
-        video_preview_url=_get_video_preview_url(message),
     )
 
 
@@ -44,11 +42,7 @@ def _parse_external_reply_links(message: Message) -> list[Link]:
     links: dict[str, Link] = {
         link.url: link
         for link in (
-            _find_links(
-                text=cast(Str | None, quote.text),
-                entities=quote.entities or [],
-                video_preview_url=None,
-            )
+            _find_links(text=cast(Str | None, quote.text), entities=quote.entities or [])
             if quote is not None
             else []
         )
@@ -56,16 +50,12 @@ def _parse_external_reply_links(message: Message) -> list[Link]:
 
     # the preview of a quoted link adds nothing
     if preview is not None and preview.url is not None:
-        links.setdefault(
-            preview.url, Link(url=preview.url, text=preview.url, offset=0, has_video_preview=False)
-        )
+        links.setdefault(preview.url, Link(url=preview.url, text=preview.url, offset=0))
 
     return list(links.values())
 
 
-def _find_links(
-    *, text: Str | None, entities: list[MessageEntity], video_preview_url: str | None
-) -> list[Link]:
+def _find_links(*, text: Str | None, entities: list[MessageEntity]) -> list[Link]:
     links: dict[str, Link] = {}
 
     if text is None:
@@ -82,31 +72,9 @@ def _find_links(
         url: str = _add_scheme(entity.url or link_text)
 
         # a link mentioned twice is downloaded once, and replies quote its first mention
-        links.setdefault(
-            url,
-            Link(
-                url=url,
-                text=link_text,
-                offset=entity.offset,
-                has_video_preview=url == video_preview_url,
-            ),
-        )
+        links.setdefault(url, Link(url=url, text=link_text, offset=entity.offset))
 
     return list(links.values())
-
-
-def _get_video_preview_url(message: Message) -> str | None:
-    web_page: WebPage | None = message.web_page
-
-    # a message previews one link, and only an enlarged preview plays its video on every client: telegram desktop opens the site from a small one
-    if (
-        web_page is None
-        or not web_page.prefer_large_media
-        or (web_page.video is None and web_page.animation is None)
-    ):
-        return None
-
-    return web_page.url
 
 
 # telegram finds links written without a scheme too
