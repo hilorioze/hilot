@@ -37,6 +37,7 @@ from pyrogram.raw.types.input_media_uploaded_document import InputMediaUploadedD
 from pyrogram.raw.types.input_media_uploaded_photo import InputMediaUploadedPhoto
 from pyrogram.raw.types.input_reply_to_message import InputReplyToMessage
 from pyrogram.raw.types.input_single_media import InputSingleMedia
+from pyrogram.raw.types.message import Message as RawMessage
 from pyrogram.raw.types.message_entity_blockquote import MessageEntityBlockquote
 from pyrogram.raw.types.message_entity_bold import MessageEntityBold
 from pyrogram.raw.types.message_entity_text_url import MessageEntityTextUrl
@@ -63,6 +64,7 @@ from hilot.domain.errors.messenger import (
 from hilot.domain.interfaces.adapters.messenger import (
     CaptionLimitReader,
     LinkPreviewReader,
+    MediaAttacher,
     MediaRefresher,
     MediaSender,
     MediaUploader,
@@ -102,6 +104,7 @@ class KurigramMessenger(
     CaptionLimitReader,
     MediaUploader,
     MediaSender,
+    MediaAttacher,
     MediaRefresher,
     TextSender,
     MessageLinkReader,
@@ -290,6 +293,32 @@ class KurigramMessenger(
         }
 
         return [message_ids[random_id] for random_id in random_ids]
+
+    @override
+    async def attach_media(self, *, source: SourceMessage, media: OutgoingMedia) -> None:
+        message: RawMessage = cast(
+            RawMessage,
+            (await self._get_message(chat_id=source.chat_id, message_id=source.message_id)).raw,
+        )
+
+        # a redelivered media finds itself already in place
+        if message.media is not None and not isinstance(message.media, MessageMediaWebPage):
+            raise AlreadySentError
+
+        caption: RichText = cast(RichText, media.caption)
+
+        with self._translate_errors():
+            await self._client.invoke(
+                EditMessage(
+                    peer=await self._resolve_peer(source.chat_id),
+                    id=source.message_id,
+                    media=get_input_media_from_file_id(media.file_id),
+                    message=caption.get_text(),
+                    # the text of the message keeps its own formatting at the start of the caption
+                    entities=[*(message.entities or []), *(self._create_entities(caption) or [])]
+                    or None,
+                )
+            )
 
     @override
     async def refresh_media(self, cached_file: CachedFile) -> FileId:

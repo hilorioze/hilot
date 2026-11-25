@@ -19,6 +19,7 @@ from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.messenger import (
     CaptionLimitReader,
     CommandAnswerer,
+    MediaAttacher,
     MediaRefresher,
     MediaSender,
     MediaUploader,
@@ -26,6 +27,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     ProgressIndicator,
     TextSender,
 )
+from hilot.domain.interfaces.adapters.text_measurer import TextMeasurer
 from hilot.domain.interfaces.adapters.workspace import Workspace
 from hilot.domain.interfaces.repositories.cached_file import CachedFileRepository
 from hilot.domain.interfaces.repositories.delivered_part import DeliveredPartRepository
@@ -70,6 +72,7 @@ class DeliverMedia:
         message_reader: MessageReader,
         media_uploader: MediaUploader,
         media_sender: MediaSender,
+        media_attacher: MediaAttacher,
         media_refresher: MediaRefresher,
         text_sender: TextSender,
         command_answerer: CommandAnswerer,
@@ -77,6 +80,7 @@ class DeliverMedia:
         delivery_formatter: DeliveryFormatter,
         caption_formatter: CaptionFormatter,
         caption_limit_reader: CaptionLimitReader,
+        text_measurer: TextMeasurer,
         file_storage: FileStorage,
         workspace: Workspace,
         download_scheduler: DownloadScheduler,
@@ -88,6 +92,7 @@ class DeliverMedia:
         self._message_reader: MessageReader = message_reader
         self._media_uploader: MediaUploader = media_uploader
         self._media_sender: MediaSender = media_sender
+        self._media_attacher: MediaAttacher = media_attacher
         self._media_refresher: MediaRefresher = media_refresher
         self._text_sender: TextSender = text_sender
         self._command_answerer: CommandAnswerer = command_answerer
@@ -95,6 +100,7 @@ class DeliverMedia:
         self._delivery_formatter: DeliveryFormatter = delivery_formatter
         self._caption_formatter: CaptionFormatter = caption_formatter
         self._caption_limit_reader: CaptionLimitReader = caption_limit_reader
+        self._text_measurer: TextMeasurer = text_measurer
         self._file_storage: FileStorage = file_storage
         self._workspace: Workspace = workspace
         self._download_scheduler: DownloadScheduler = download_scheduler
@@ -155,7 +161,10 @@ class DeliverMedia:
                     await self._send_failure(request=result.request, part=part, failure=content)
                 else:
                     cached_files = await self._send_media(
-                        request=request, part=part, media=content
+                        request=request,
+                        part=part,
+                        media=content,
+                        attaches=result.attaches_media(),
                     )
 
             async with self._uow:
@@ -170,13 +179,19 @@ class DeliverMedia:
     # the command names each post it delivered and leads to its media, then each failure
     async def _answer_command(self, result: DownloadResult) -> None:
         request: DownloadRequest = result.request
+        posts: list[DeliveredPost] = await self._find_delivered_posts(result)
+
+        # a command that became the media answers itself
+        if any(post.message_id == request.source.message_id for post in posts):
+            return
+
         entries: list[AnswerEntry] = [
             *(
                 AnswerEntry(
                     kind=AnswerKind.RESULT,
                     text=self._delivery_formatter.format_delivered_post(post),
                 )
-                for post in await self._find_delivered_posts(result)
+                for post in posts
             ),
             *(
                 AnswerEntry(kind=AnswerKind.ERROR, text=RichText.plain(text))
@@ -263,7 +278,12 @@ class DeliverMedia:
         await self._text_sender.send_text(source=request.source, part=part, text=text, quote=quote)
 
     async def _send_media(
-        self, *, request: DownloadRequest, part: int, media: tuple[StoredMedia | CachedFile, ...]
+        self,
+        *,
+        request: DownloadRequest,
+        part: int,
+        media: tuple[StoredMedia | CachedFile, ...],
+        attaches: bool,
     ) -> list[CachedFile]:
         source: SourceMessage = request.source
         files: list[FileId] = [
@@ -271,22 +291,16 @@ class DeliverMedia:
         ]
 
         try:
-            message_ids: list[MessageId] = await self._media_sender.send_media(
-                source=source,
-                part=part,
-                media=self._caption_media(media=media, files=files),
-                reply_to=request.reply_to,
+            message_ids: list[MessageId] = await self._place_media(
+                request=request, part=part, media=media, files=files, attaches=attaches
             )
         except FileReferenceExpiredError:
             files = [
                 await self._refresh_file_id(item) if isinstance(item, CachedFile) else file_id
                 for item, file_id in zip(media, files, strict=True)
             ]
-            message_ids = await self._media_sender.send_media(
-                source=source,
-                part=part,
-                media=self._caption_media(media=media, files=files),
-                reply_to=request.reply_to,
+            message_ids = await self._place_media(
+                request=request, part=part, media=media, files=files, attaches=attaches
             )
 
         return [
@@ -301,6 +315,46 @@ class DeliverMedia:
             )
             for item, file_id, message_id in zip(media, files, message_ids, strict=True)
         ]
+
+    async def _place_media(
+        self,
+        *,
+        request: DownloadRequest,
+        part: int,
+        media: tuple[StoredMedia | CachedFile, ...],
+        files: list[FileId],
+        attaches: bool,
+    ) -> list[MessageId]:
+        source: SourceMessage = request.source
+
+        if attaches:
+            caption: RichText = self._attach_caption(source=source, post=media[0].post)
+
+            # the text of the message and the whole caption may not fit together, then the media answers the message
+            if (
+                self._text_measurer.measure(caption.get_text())
+                <= self._caption_limit_reader.get_caption_limit()
+            ):
+                await self._media_attacher.attach_media(
+                    source=source, media=OutgoingMedia(file_id=files[0], caption=caption)
+                )
+
+                return [source.message_id]
+
+        return await self._media_sender.send_media(
+            source=source,
+            part=part,
+            media=self._caption_media(media=media, files=files),
+            reply_to=request.reply_to,
+        )
+
+    def _attach_caption(self, *, source: SourceMessage, post: PostDetails) -> RichText:
+        caption: RichText | None = self._caption_formatter.format_caption(post=post, limit=None)
+
+        return RichText.join(
+            separator="\n\n",
+            texts=[RichText.plain(source.text), *((caption,) if caption else ())],
+        )
 
     # an album shows the caption of each post once, on its first file
     def _caption_media(

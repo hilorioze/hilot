@@ -25,6 +25,9 @@ class SourceMessage:
     # the owner's own message, which the account can edit; the other side of a private chat calls the commands too
     is_outgoing: bool
 
+    # a link preview isn't media of the message
+    has_media: bool
+
     sent_at: datetime
 
     # reactions in saved messages are tags available only with premium

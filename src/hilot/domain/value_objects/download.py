@@ -126,6 +126,18 @@ class DownloadResult:
     def needs_transcoding(self) -> bool:
         return any(media.info.needs_transcoding() for media in self.get_stored_media())
 
+    # the owner's text message becomes the media of its only post, which answers it
+    def attaches_media(self) -> bool:
+        source: SourceMessage = self.request.source
+
+        return (
+            source.is_outgoing
+            and not source.has_media
+            and self.request.reply_to == source.message_id
+            and len(self.media) == 1
+            and not self.failures
+        )
+
     @classmethod
     def from_items(
         cls, *, request: DownloadRequest, items: list[StoredMedia | CachedFile | Failure]

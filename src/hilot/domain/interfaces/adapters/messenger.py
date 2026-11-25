@@ -55,6 +55,11 @@ class MediaSender(Protocol):
     ) -> list[MessageId]: ...
 
 
+# the caption starts with the text of the message, which keeps its formatting
+class MediaAttacher(Protocol):
+    async def attach_media(self, *, source: SourceMessage, media: OutgoingMedia) -> None: ...
+
+
 class MediaRefresher(Protocol):
     async def refresh_media(self, cached_file: CachedFile) -> FileId: ...
 
