@@ -312,7 +312,8 @@ class KurigramMessenger(
                     peer=await self._resolve_peer(source.chat_id),
                     id=source.message_id,
                     message="".join(part.text for part in text.parts),
-                    entities=entities,
+                    # telegram refuses an empty list as `INPUT_REQUEST_TOO_LONG`
+                    entities=entities or None,
                 )
             )
 
