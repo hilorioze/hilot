@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from hilot.domain.interfaces.adapters.messenger import CommandAnswerer, ProgressIndicator
+from hilot.domain.interfaces.adapters.watermark_detector import DetectableMediaMatcher
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
 from hilot.domain.value_objects.message import AnswerEntry, AnswerKind, CommandAnswer
 from hilot.domain.value_objects.text import RichText
@@ -19,10 +20,12 @@ class ReplyWatermarkCheck:
         command_answerer: CommandAnswerer,
         progress_indicator: ProgressIndicator,
         watermark_formatter: WatermarkFormatter,
+        media_matcher: DetectableMediaMatcher,
     ) -> None:
         self._command_answerer: CommandAnswerer = command_answerer
         self._progress_indicator: ProgressIndicator = progress_indicator
         self._watermark_formatter: WatermarkFormatter = watermark_formatter
+        self._media_matcher: DetectableMediaMatcher = media_matcher
 
     async def __call__(self, data: ReplyWatermarkCheckDTO) -> None:
         await self._command_answerer.answer_command(
@@ -30,11 +33,14 @@ class ReplyWatermarkCheck:
             answer=CommandAnswer(
                 entries=[
                     AnswerEntry(
-                        kind=AnswerKind.RESULT if data.reply.is_verdict() else AnswerKind.ERROR,
+                        kind=AnswerKind.RESULT if result.is_verdict() else AnswerKind.ERROR,
                         text=RichText.plain(
-                            self._watermark_formatter.format_outcome(data.reply.outcome)
+                            self._watermark_formatter.format_result(
+                                result=result, size_limit=self._media_matcher.get_size_limit()
+                            )
                         ),
                     )
+                    for result in data.reply.results
                 ]
             ),
         )

@@ -23,9 +23,14 @@ from hilot.domain.value_objects.media import MediaKind
 from hilot.domain.value_objects.watermark import (
     WatermarkCheck,
     WatermarkCheckRequest,
+    WatermarkFailure,
     WatermarkQuotaExceeded,
     WatermarkReply,
+    WatermarkResult,
+    WatermarkTarget,
 )
+
+from .media import find_media_failure
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -57,23 +62,37 @@ class CheckWatermark:
         self._reply_scheduler: WatermarkReplyScheduler = reply_scheduler
 
     async def __call__(self, data: CheckWatermarkDTO) -> None:
-        # a failed task isn't retried, so its media goes either way
-        try:
-            async with self._workspace.create() as directory:
-                path: Path = directory / "media"
-                await self._file_storage.download(key=data.request.storage_key, path=path)
-
-                outcome: WatermarkCheck | WatermarkQuotaExceeded = await self._detect(
-                    path=path, mime_type=data.request.mime_type
-                )
-        except DetectionQuotaExceededError as error:
-            outcome = WatermarkQuotaExceeded(retry_after=error.retry_after)
-        finally:
-            await self._file_storage.delete(data.request.storage_key)
+        results: list[WatermarkResult] = [
+            WatermarkResult(label=target.label, outcome=await self._check_target(target))
+            for target in data.request.targets
+        ]
 
         await self._reply_scheduler.schedule_reply(
-            WatermarkReply(source=data.request.source, outcome=outcome)
+            WatermarkReply(source=data.request.source, results=[*results, *data.request.failures])
         )
+
+    async def _check_target(
+        self, target: WatermarkTarget
+    ) -> WatermarkCheck | WatermarkQuotaExceeded | WatermarkFailure:
+        # a failed task isn't retried, so an attached media goes either way
+        try:
+            failure: WatermarkFailure | None = find_media_failure(
+                media_matcher=self._media_matcher, mime_type=target.mime_type, size=target.size
+            )
+
+            if failure is not None:
+                return failure
+
+            async with self._workspace.create() as directory:
+                path: Path = directory / "media"
+                await self._file_storage.download(key=target.storage_key, path=path)
+
+                return await self._detect(path=path, mime_type=target.mime_type)
+        except DetectionQuotaExceededError as error:
+            return WatermarkQuotaExceeded(retry_after=error.retry_after)
+        finally:
+            if not target.is_shared:
+                await self._file_storage.delete(target.storage_key)
 
     async def _detect(self, *, path: Path, mime_type: str) -> WatermarkCheck:
         kind: MediaKind = self._media_matcher.get_kind(mime_type)

@@ -1,9 +1,8 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
-from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.messenger import (
     CommandAnswerer,
     LinkPreviewReader,
@@ -11,9 +10,9 @@ from hilot.domain.interfaces.adapters.messenger import (
     UploadLimitReader,
 )
 from hilot.domain.interfaces.adapters.preview_wait_scheduler import PreviewWaitScheduler
-from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
 from hilot.domain.value_objects.download import (
     LINK_PREVIEW_TIMEOUT,
+    DownloadPurpose,
     DownloadRequest,
     DownloadTrigger,
     PreviewWait,
@@ -29,8 +28,7 @@ from hilot.domain.value_objects.message import (
 )
 from hilot.domain.value_objects.text import RichText
 
-# a share link leads to the link of its post through a couple of redirects
-_MAX_REDIRECTS: int = 5
+from .links import SupportedLinkFinder
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -46,8 +44,7 @@ class RequestDownload:
     def __init__(
         self,
         *,
-        link_matcher: LinkMatcher,
-        redirect_reader: RedirectReader,
+        link_finder: SupportedLinkFinder,
         link_preview_reader: LinkPreviewReader,
         preview_wait_scheduler: PreviewWaitScheduler,
         progress_indicator: ProgressIndicator,
@@ -56,8 +53,7 @@ class RequestDownload:
         upload_limit_reader: UploadLimitReader,
         download_scheduler: DownloadScheduler,
     ) -> None:
-        self._link_matcher: LinkMatcher = link_matcher
-        self._redirect_reader: RedirectReader = redirect_reader
+        self._link_finder: SupportedLinkFinder = link_finder
         self._link_preview_reader: LinkPreviewReader = link_preview_reader
         self._preview_wait_scheduler: PreviewWaitScheduler = preview_wait_scheduler
         self._progress_indicator: ProgressIndicator = progress_indicator
@@ -85,21 +81,19 @@ class RequestDownload:
 
             return
 
-        links: list[Link] = []
-
-        for link in data.links:
-            # the preview plays the video by itself, unless the file is asked for
-            if preview is not None and preview.plays_video and link.url == preview.url:
-                continue
-
-            url: str | None = await self._find_supported_url(link.url)
-
-            if url is not None:
-                links.append(replace(link, url=url))
+        links: list[Link] = await self._link_finder.find_supported_links(
+            [
+                link
+                for link in data.links
+                # the preview plays the video by itself, unless the file is asked for
+                if preview is None or not preview.plays_video or link.url != preview.url
+            ]
+        )
 
         request: DownloadRequest = DownloadRequest(
             source=data.source,
             trigger=data.trigger,
+            purpose=DownloadPurpose.DELIVERY,
             links=links,
             reply_to=data.reply_to,
             size_limit=self._upload_limit_reader.get_upload_limit(),
@@ -126,17 +120,3 @@ class RequestDownload:
             await self._progress_indicator.show_progress(data.source)
 
         await self._download_scheduler.schedule_download(request)
-
-    async def _find_supported_url(self, url: str) -> str | None:
-        for _ in range(_MAX_REDIRECTS):
-            if self._link_matcher.matches(url):
-                return url
-
-            location: str | None = await self._redirect_reader.read_redirect(url)
-
-            if location is None:
-                return None
-
-            url = location
-
-        return None

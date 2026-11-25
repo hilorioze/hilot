@@ -1,12 +1,16 @@
 from typing import ClassVar, override
 
+from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
+from hilot.domain.value_objects.download import Failure
 from hilot.domain.value_objects.watermark import (
+    MediaLabel,
     UndeterminedReason,
     WatermarkCheck,
     WatermarkConfidence,
     WatermarkFailure,
     WatermarkQuotaExceeded,
+    WatermarkResult,
     WatermarkSegment,
     WatermarkVerdict,
 )
@@ -16,7 +20,7 @@ from .units import format_wait
 
 class ChatWatermarkFormatter(WatermarkFormatter):
     _FAILURE_TEXTS: ClassVar[dict[WatermarkFailure, str]] = {
-        WatermarkFailure.NO_MEDIA: "nothing to check, reply to a photo, video or audio",
+        WatermarkFailure.NO_MEDIA: "nothing to check, add a link or reply to a photo, video, audio or link",
         WatermarkFailure.UNSUPPORTED: "synthid can't check this type",
         WatermarkFailure.TOO_BIG: "too big for synthid",
         WatermarkFailure.BUG: "something broke",
@@ -38,10 +42,17 @@ class ChatWatermarkFormatter(WatermarkFormatter):
         WatermarkConfidence.VERY_HIGH: "very high confidence",
     }
 
+    def __init__(self, *, failure_formatter: FailureFormatter) -> None:
+        self._failure_formatter: FailureFormatter = failure_formatter
+
     @override
     def format_outcome(
         self, outcome: WatermarkCheck | WatermarkQuotaExceeded | WatermarkFailure
     ) -> str:
+        # links without media fail the same as for a download
+        if outcome == WatermarkFailure.NOT_FOUND:
+            return self._failure_formatter.format_no_media()
+
         if isinstance(outcome, WatermarkFailure):
             return self._FAILURE_TEXTS[outcome]
 
@@ -59,6 +70,28 @@ class ChatWatermarkFormatter(WatermarkFormatter):
                 )
 
                 return f"synthid can't tell, {reason}" if reason else "synthid can't tell"
+
+    @override
+    def format_result(self, *, result: WatermarkResult, size_limit: int) -> str:
+        text: str = (
+            self._failure_formatter.format_failure(failure=result.outcome, size_limit=size_limit)
+            if isinstance(result.outcome, Failure)
+            else self.format_outcome(result.outcome)
+        )
+        name: str = self._format_label(result.label)
+
+        return f"{name}: {text}" if name else text
+
+    @staticmethod
+    def _format_label(label: MediaLabel) -> str:
+        return " ".join(
+            part
+            for part in (
+                label.link.text if label.link else None,
+                f"#{label.position}" if label.position else None,
+            )
+            if part is not None
+        )
 
     def _describe_detection(self, check: WatermarkCheck) -> list[str]:
         details: list[str] = [

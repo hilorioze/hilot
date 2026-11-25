@@ -1,4 +1,5 @@
 import json
+import mimetypes
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -69,6 +70,7 @@ class FfprobeMediaProber(MediaProber):
         return MediaInfo(
             kind=self._get_kind(probe=probe, video=video),
             size=probe.format.size,
+            mime_type=mimetypes.guess_file_type(path)[0] or "application/octet-stream",
             container=probe.format.format_name,
             video_codec=video and video.codec_name,
             audio_codec=audio and audio.codec_name,

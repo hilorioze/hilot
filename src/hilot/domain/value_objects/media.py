@@ -29,6 +29,9 @@ class MediaInfo:
     kind: MediaKind
     size: int
 
+    # the type the file name tells, `application/octet-stream` when it tells none
+    mime_type: str
+
     container: str
     video_codec: str | None
     audio_codec: str | None

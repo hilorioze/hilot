@@ -59,8 +59,16 @@ class DownloadTrigger(StrEnum):
     # a message with links, downloaded by itself
     LINK = "link"
 
-    # `.dl` of the owner or of the other side of a private chat, with links of its own or in reply to a message with links
+    # `.dl` or `.synth` of the owner or of the other side of a private chat, with links of its own or in reply to a message with links
     COMMAND = "command"
+
+
+class DownloadPurpose(StrEnum):
+    # the media goes to the chat
+    DELIVERY = "delivery"
+
+    # `.synth` checks the media for a synthid watermark
+    WATERMARK_CHECK = "watermark_check"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -68,6 +76,7 @@ class DownloadRequest:
     # the message with the links or the command
     source: SourceMessage
     trigger: DownloadTrigger
+    purpose: DownloadPurpose
 
     links: list[Link]
 
@@ -94,6 +103,17 @@ class DownloadRequest:
     # a failure among the media of several links names its link
     def names_links(self) -> bool:
         return len(self.links) > 1
+
+    # a check needs the file itself, which a media sent before keeps only in telegram
+    def reuses_sent_media(self) -> bool:
+        return self.purpose == DownloadPurpose.DELIVERY
+
+    # only a delivery transcodes the media, which can still shrink it under the limit
+    def can_take(self, info: MediaInfo) -> bool:
+        if self.purpose == DownloadPurpose.DELIVERY:
+            return info.can_fit(self.size_limit)
+
+        return info.size <= self.size_limit
 
 
 # a message whose links wait for their preview, to know whether it plays the video

@@ -1,12 +1,20 @@
 import asyncio
 from zoneinfo import ZoneInfo
 
-from dishka import AsyncContainer, Provider, Scope, make_async_container, provide_all
+from dishka import (
+    AsyncContainer,
+    Provider,
+    Scope,
+    make_async_container,
+    provide,
+    provide_all,
+)
 from pyrogram import Client
 
 from hilot.application.check_ins.check_in import RunCheckIn
 from hilot.application.media.await_preview import AwaitLinkPreview
 from hilot.application.media.deliver import DeliverMedia
+from hilot.application.media.links import SupportedLinkFinder
 from hilot.application.media.request_download import RequestDownload
 from hilot.application.transcriptions.reply import ReplyTranscription
 from hilot.application.transcriptions.request import RequestTranscription
@@ -51,6 +59,8 @@ from .worker import configure_logging, run_worker
 
 class _InteractorProvider(Provider):
     scope = Scope.REQUEST
+
+    link_finder = provide(SupportedLinkFinder)
 
     interactors = provide_all(
         RequestDownload,

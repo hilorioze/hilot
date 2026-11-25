@@ -16,15 +16,22 @@ from hilot.domain.interfaces.adapters.media_extractor import Extraction, MediaEx
 from hilot.domain.interfaces.adapters.media_lock import MediaLock
 from hilot.domain.interfaces.adapters.media_prober import MediaProber
 from hilot.domain.interfaces.adapters.transcode_scheduler import TranscodeScheduler
+from hilot.domain.interfaces.adapters.watermark_scheduler import WatermarkCheckScheduler
 from hilot.domain.interfaces.adapters.workspace import Workspace
 from hilot.domain.interfaces.repositories.cached_file import CachedFileRepository
 from hilot.domain.interfaces.repositories.cookie import CookieRepository
 from hilot.domain.interfaces.repositories.stored_file import StoredFileRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
 from hilot.domain.value_objects.cookie import Cookie
-from hilot.domain.value_objects.download import DownloadRequest, DownloadResult, Failure
+from hilot.domain.value_objects.download import (
+    DownloadPurpose,
+    DownloadRequest,
+    DownloadResult,
+    Failure,
+)
 from hilot.domain.value_objects.media import ExtractedMedia, MediaInfo, StorageKey, StoredMedia
 from hilot.domain.value_objects.message import Link
+from hilot.domain.value_objects.watermark import WatermarkCheckRequest
 
 from .converters import convert_stored_file_to_media, convert_stored_media_to_file
 
@@ -45,6 +52,7 @@ class DownloadMedia:
         file_storage: FileStorage,
         transcode_scheduler: TranscodeScheduler,
         delivery_scheduler: DeliveryScheduler,
+        check_scheduler: WatermarkCheckScheduler,
         cookie_repository: CookieRepository,
         cached_file_repository: CachedFileRepository,
         stored_file_repository: StoredFileRepository,
@@ -58,6 +66,7 @@ class DownloadMedia:
         self._file_storage: FileStorage = file_storage
         self._transcode_scheduler: TranscodeScheduler = transcode_scheduler
         self._delivery_scheduler: DeliveryScheduler = delivery_scheduler
+        self._check_scheduler: WatermarkCheckScheduler = check_scheduler
         self._cookie_repository: CookieRepository = cookie_repository
         self._cached_file_repository: CachedFileRepository = cached_file_repository
         self._stored_file_repository: StoredFileRepository = stored_file_repository
@@ -75,7 +84,9 @@ class DownloadMedia:
 
         result: DownloadResult = DownloadResult.from_items(request=data.request, items=items)
 
-        if result.needs_transcoding():
+        if data.request.purpose == DownloadPurpose.WATERMARK_CHECK:
+            await self._check_scheduler.schedule_check(WatermarkCheckRequest.from_download(result))
+        elif result.needs_transcoding():
             await self._transcode_scheduler.schedule_transcode(result)
         else:
             await self._delivery_scheduler.schedule_delivery(result)
@@ -120,13 +131,14 @@ class DownloadMedia:
         extraction: Extraction,
         entry: ExtractedMedia,
     ) -> StoredMedia | CachedFile | Failure:
-        async with self._uow:
-            cached_file: CachedFile | None = await self._cached_file_repository.get(
-                account_id=request.source.account_id, media_key=entry.media_key
-            )
+        if request.reuses_sent_media():
+            async with self._uow:
+                cached_file: CachedFile | None = await self._cached_file_repository.get(
+                    account_id=request.source.account_id, media_key=entry.media_key
+                )
 
-        if cached_file is not None:
-            return cached_file
+            if cached_file is not None:
+                return cached_file
 
         # the accounts that get the same media at once wait for one download of it
         async with self._media_lock.acquire(entry.media_key):
@@ -136,7 +148,7 @@ class DownloadMedia:
                 )
 
             # reuse the file another account stored lately if it fits this account's limit, a premium one's may not
-            if stored_file is not None and stored_file.info.can_fit(request.size_limit):
+            if stored_file is not None and request.can_take(stored_file.info):
                 return convert_stored_file_to_media(stored_file=stored_file, link=link)
 
             # a failed media doesn't stop the rest of the link
@@ -164,7 +176,7 @@ class DownloadMedia:
         ):
             info: MediaInfo = await self._media_prober.probe(path)
 
-            if not info.can_fit(request.size_limit):
+            if not request.can_take(info):
                 raise TooBigError(size=info.size)
 
             storage_key: StorageKey = await self._file_storage.upload(path)

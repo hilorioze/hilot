@@ -19,6 +19,7 @@ class StoredFileModel(Base):
 
     kind: Mapped[MediaKind]
     size: Mapped[int]
+    mime_type: Mapped[str]
     container: Mapped[str]
     video_codec: Mapped[str | None]
     audio_codec: Mapped[str | None]
