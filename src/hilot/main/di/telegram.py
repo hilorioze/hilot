@@ -19,12 +19,14 @@ from hilot.domain.interfaces.adapters.messenger import (
     TextSender,
     UploadLimitReader,
 )
+from hilot.domain.interfaces.adapters.text_measurer import TextMeasurer
 from hilot.domain.value_objects.message import AccountId
 from hilot.infrastructure.telegram.authorization import Authorization
 from hilot.infrastructure.telegram.chat_bot import KurigramChatBot
 from hilot.infrastructure.telegram.client import create_client
 from hilot.infrastructure.telegram.messenger import KurigramMessenger
 from hilot.infrastructure.telegram.storage import SQLStorage
+from hilot.infrastructure.telegram.text_measurer import TelegramTextMeasurer
 from hilot.main.config.telegram import TelegramConfig
 from hilot.presentation.telegram.command_answerer import ChatCommandAnswerer
 
@@ -80,6 +82,8 @@ class TelegramProvider(Provider):
         ],
         scope=Scope.APP,
     )
+    text_measurer = provide(TelegramTextMeasurer, provides=TextMeasurer, scope=Scope.APP)
+
     command_answerer = provide(ChatCommandAnswerer, provides=CommandAnswerer, scope=Scope.APP)
 
     chat_bot = provide(KurigramChatBot, provides=ChatBot, scope=Scope.APP)

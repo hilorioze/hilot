@@ -1,5 +1,12 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Self
+
+
+class TextStyle(StrEnum):
+    BOLD = "bold"
+    # a quote that shows its first lines and opens the rest on a tap
+    EXPANDABLE_QUOTE = "expandable_quote"
 
 
 # a piece of a text, which opens its url on a tap when it has one
@@ -7,6 +14,7 @@ from typing import Self
 class TextPart:
     text: str
     url: str | None
+    styles: frozenset[TextStyle] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -16,6 +24,10 @@ class RichText:
     @classmethod
     def plain(cls, text: str) -> Self:
         return cls((TextPart(text=text, url=None),))
+
+    @classmethod
+    def styled(cls, text: str, *, style: TextStyle) -> Self:
+        return cls((TextPart(text=text, url=None, styles=frozenset({style})),))
 
     @classmethod
     def join(cls, *, separator: str, texts: list[RichText]) -> Self:

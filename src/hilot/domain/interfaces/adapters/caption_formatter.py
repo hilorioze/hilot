@@ -1,7 +1,9 @@
 from typing import Protocol
 
 from hilot.domain.value_objects.media import PostDetails
+from hilot.domain.value_objects.text import RichText
 
 
 class CaptionFormatter(Protocol):
-    def format_caption(self, *, post: PostDetails, limit: int) -> str | None: ...
+    # without a limit the caption comes whole
+    def format_caption(self, *, post: PostDetails, limit: int | None) -> RichText | None: ...

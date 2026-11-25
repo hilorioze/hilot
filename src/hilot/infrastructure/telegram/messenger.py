@@ -37,6 +37,8 @@ from pyrogram.raw.types.input_media_uploaded_document import InputMediaUploadedD
 from pyrogram.raw.types.input_media_uploaded_photo import InputMediaUploadedPhoto
 from pyrogram.raw.types.input_reply_to_message import InputReplyToMessage
 from pyrogram.raw.types.input_single_media import InputSingleMedia
+from pyrogram.raw.types.message_entity_blockquote import MessageEntityBlockquote
+from pyrogram.raw.types.message_entity_bold import MessageEntityBold
 from pyrogram.raw.types.message_entity_text_url import MessageEntityTextUrl
 from pyrogram.raw.types.message_media_document import MessageMediaDocument
 from pyrogram.raw.types.message_media_photo import MessageMediaPhoto
@@ -88,7 +90,7 @@ from hilot.domain.value_objects.message import (
     MessageId,
     SourceMessage,
 )
-from hilot.domain.value_objects.text import RichText
+from hilot.domain.value_objects.text import RichText, TextStyle
 
 
 class KurigramMessenger(
@@ -347,9 +349,11 @@ class KurigramMessenger(
                 )
             )
 
-    @staticmethod
-    def _create_entities(text: RichText) -> list[MessageEntity] | None:
+    @classmethod
+    def _create_entities(cls, text: RichText) -> list[MessageEntity] | None:
         entities: list[MessageEntity] = []
+        # consecutive parts with a style share one entity, which starts at the first of them
+        openings: dict[TextStyle, int] = {}
         offset: int = 0
 
         # telegram measures the entities in utf-16 code units
@@ -359,10 +363,34 @@ class KurigramMessenger(
             if part.url is not None:
                 entities.append(MessageEntityTextUrl(offset=offset, length=length, url=part.url))
 
+            for style in openings.keys() - part.styles:
+                entities.append(
+                    cls._create_style_entity(
+                        style=style, offset=openings[style], length=offset - openings[style]
+                    )
+                )
+                del openings[style]
+
+            for style in part.styles - openings.keys():
+                openings[style] = offset
+
             offset += length
+
+        entities.extend(
+            cls._create_style_entity(style=style, offset=start, length=offset - start)
+            for style, start in openings.items()
+        )
+        entities.sort(key=lambda entity: entity.offset)
 
         # telegram refuses an empty list as `INPUT_REQUEST_TOO_LONG`
         return entities or None
+
+    @staticmethod
+    def _create_style_entity(*, style: TextStyle, offset: int, length: int) -> MessageEntity:
+        if style == TextStyle.BOLD:
+            return MessageEntityBold(offset=offset, length=length)
+
+        return MessageEntityBlockquote(offset=offset, length=length, collapsed=True)
 
     async def _save_file_showing_progress(
         self, *, peer: InputPeer, kind: MediaKind, path: Path
@@ -454,9 +482,10 @@ class KurigramMessenger(
             return SendMedia(
                 peer=peer,
                 media=get_input_media_from_file_id(media[0].file_id),
-                message=media[0].caption or "",
+                message=media[0].caption.get_text() if media[0].caption else "",
                 random_id=random_ids[0],
                 reply_to=input_reply_to,
+                entities=self._create_entities(media[0].caption) if media[0].caption else None,
                 silent=True,
             )
 
@@ -466,7 +495,8 @@ class KurigramMessenger(
                 InputSingleMedia(
                     media=get_input_media_from_file_id(item.file_id),
                     random_id=random_id,
-                    message=item.caption or "",
+                    message=item.caption.get_text() if item.caption else "",
+                    entities=self._create_entities(item.caption) if item.caption else None,
                 )
                 for item, random_id in zip(media, random_ids, strict=True)
             ],

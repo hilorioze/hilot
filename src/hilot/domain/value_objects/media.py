@@ -3,6 +3,7 @@ from enum import StrEnum
 from typing import ClassVar, NewType
 
 from .message import Link
+from .text import RichText
 
 FileId = NewType("FileId", str)
 StorageKey = NewType("StorageKey", str)
@@ -72,7 +73,7 @@ class PostDetails:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class OutgoingMedia:
     file_id: FileId
-    caption: str | None
+    caption: RichText | None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
