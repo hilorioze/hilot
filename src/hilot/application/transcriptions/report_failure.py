@@ -22,6 +22,7 @@ class ReportTranscriptionFailure:
             TranscriptionReply(
                 source=data.request.source,
                 trigger=data.request.trigger,
+                file_unique_id=data.request.file_unique_id,
                 outcome=TranscriptionFailure.BUG,
             )
         )

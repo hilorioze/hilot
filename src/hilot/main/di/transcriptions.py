@@ -5,6 +5,10 @@ from groq import AsyncGroq
 
 from hilot.domain.interfaces.adapters.speech_extractor import SpeechExtractor
 from hilot.domain.interfaces.adapters.speech_recognizer import SpeechRecognizer
+from hilot.domain.interfaces.repositories.cached_transcript import CachedTranscriptRepository
+from hilot.infrastructure.database.sql.repositories.cached_transcript import (
+    SQLCachedTranscriptRepository,
+)
 from hilot.infrastructure.ffmpeg.speech_extractor import FfmpegSpeechExtractor
 from hilot.infrastructure.groq.recognizer import GroqSpeechRecognizer
 from hilot.main.config.groq import GroqConfig
@@ -22,3 +26,9 @@ class SpeechRecognizerProvider(Provider):
 
     speech_recognizer = provide(GroqSpeechRecognizer, provides=SpeechRecognizer)
     speech_extractor = provide(FfmpegSpeechExtractor, provides=SpeechExtractor)
+
+
+class CachedTranscriptProvider(Provider):
+    cached_transcript_repository = provide(
+        SQLCachedTranscriptRepository, provides=CachedTranscriptRepository, scope=Scope.REQUEST
+    )

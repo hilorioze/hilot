@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import StrEnum
 
-from .media import StorageKey
+from .media import FileUniqueId, StorageKey
 from .message import SourceMessage
 
 
@@ -37,6 +37,7 @@ class TranscriptionRequest:
     source: SourceMessage
     trigger: TranscriptionTrigger
 
+    file_unique_id: FileUniqueId
     storage_key: StorageKey
 
 
@@ -44,6 +45,9 @@ class TranscriptionRequest:
 class TranscriptionReply:
     source: SourceMessage
     trigger: TranscriptionTrigger
+
+    # the transcript is kept under the file, so the same file sent again needs no transcription
+    file_unique_id: FileUniqueId
 
     outcome: Transcript | TranscriptionQuotaExceeded | TranscriptionFailure
 

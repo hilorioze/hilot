@@ -5,6 +5,7 @@ from adaptix import P, Retort, dumper, name_mapping
 from adaptix.conversion import ConversionRetort, coercer, get_converter, link_function
 
 from hilot.domain.entities.cached_file import CachedFile
+from hilot.domain.entities.cached_transcript import CachedTranscript
 from hilot.domain.entities.cached_watermark_check import CachedWatermarkCheck
 from hilot.domain.entities.delivered_part import DeliveredPart
 from hilot.domain.entities.stored_file import StoredFile
@@ -21,10 +22,12 @@ from hilot.domain.value_objects.media import (
     StorageKey,
 )
 from hilot.domain.value_objects.message import AccountId, ChatId, MessageId
+from hilot.domain.value_objects.transcription import Transcript
 from hilot.domain.value_objects.watermark import WatermarkCheck
 
 from .models import (
     CachedFileModel,
+    CachedTranscriptModel,
     CachedWatermarkCheckModel,
     CookieModel,
     DeliveredPartModel,
@@ -101,6 +104,13 @@ def convert_cached_watermark_check_model_to_entity(
     )
 
 
+def convert_cached_transcript_model_to_entity(model: CachedTranscriptModel) -> CachedTranscript:
+    return CachedTranscript(
+        file_unique_id=FileUniqueId(model.file_unique_id),
+        transcript=Transcript(text=model.text),
+    )
+
+
 @_CONVERTERS.impl_converter
 def convert_cookie_model_to_entity(*, model: CookieModel, value: str) -> Cookie: ...
 
@@ -144,4 +154,11 @@ def convert_cached_watermark_check_entity_to_row(
         "content_hash": cached_watermark_check.content_hash,
         "check": _JSON_RETORT.dump(cached_watermark_check.check),
         "checked_at": cached_watermark_check.checked_at,
+    }
+
+
+def convert_cached_transcript_entity_to_row(cached_transcript: CachedTranscript) -> dict[str, Any]:
+    return {
+        "file_unique_id": cached_transcript.file_unique_id,
+        "text": cached_transcript.transcript.text,
     }

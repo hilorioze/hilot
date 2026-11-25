@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar
 
+from hilot.domain.entities.cached_transcript import CachedTranscript
 from hilot.domain.errors.messenger import RichUnavailableError
 from hilot.domain.interfaces.adapters.messenger import (
     CaptionLimitReader,
@@ -15,6 +16,8 @@ from hilot.domain.interfaces.adapters.messenger import (
 )
 from hilot.domain.interfaces.adapters.text_measurer import TextMeasurer
 from hilot.domain.interfaces.adapters.transcription_formatter import TranscriptionFormatter
+from hilot.domain.interfaces.repositories.cached_transcript import CachedTranscriptRepository
+from hilot.domain.interfaces.unit_of_work import UnitOfWork
 from hilot.domain.value_objects.message import (
     AnswerEntry,
     AnswerKind,
@@ -48,6 +51,8 @@ class ReplyTranscription:
         text_measurer: TextMeasurer,
         progress_indicator: ProgressIndicator,
         transcription_formatter: TranscriptionFormatter,
+        cached_transcript_repository: CachedTranscriptRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._command_answerer: CommandAnswerer = command_answerer
         self._text_editor: TextEditor = text_editor
@@ -60,11 +65,22 @@ class ReplyTranscription:
         self._text_measurer: TextMeasurer = text_measurer
         self._progress_indicator: ProgressIndicator = progress_indicator
         self._transcription_formatter: TranscriptionFormatter = transcription_formatter
+        self._cached_transcript_repository: CachedTranscriptRepository = (
+            cached_transcript_repository
+        )
+        self._uow: UnitOfWork = uow
 
     async def __call__(self, data: ReplyTranscriptionDTO) -> None:
         source: SourceMessage = data.reply.source
 
         if isinstance(data.reply.outcome, Transcript):
+            async with self._uow:
+                await self._cached_transcript_repository.save(
+                    CachedTranscript(
+                        file_unique_id=data.reply.file_unique_id, transcript=data.reply.outcome
+                    )
+                )
+
             await self._place_transcript(source=source, transcript=data.reply.outcome)
         elif not data.reply.is_silent():
             await self._command_answerer.answer_command(

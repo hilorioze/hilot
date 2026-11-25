@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from hilot.domain.entities.cached_transcript import CachedTranscript
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.messenger import (
     CommandAnswerer,
@@ -8,8 +9,13 @@ from hilot.domain.interfaces.adapters.messenger import (
     ProgressIndicator,
 )
 from hilot.domain.interfaces.adapters.transcription_formatter import TranscriptionFormatter
-from hilot.domain.interfaces.adapters.transcription_scheduler import TranscriptionScheduler
+from hilot.domain.interfaces.adapters.transcription_scheduler import (
+    TranscriptionReplyScheduler,
+    TranscriptionScheduler,
+)
 from hilot.domain.interfaces.adapters.workspace import Workspace
+from hilot.domain.interfaces.repositories.cached_transcript import CachedTranscriptRepository
+from hilot.domain.interfaces.unit_of_work import UnitOfWork
 from hilot.domain.value_objects.media import AttachedMedia, StorageKey
 from hilot.domain.value_objects.message import (
     AnswerEntry,
@@ -21,6 +27,7 @@ from hilot.domain.value_objects.message import (
 from hilot.domain.value_objects.text import RichText
 from hilot.domain.value_objects.transcription import (
     TranscriptionFailure,
+    TranscriptionReply,
     TranscriptionRequest,
     TranscriptionTrigger,
 )
@@ -45,6 +52,9 @@ class RequestTranscription:
         workspace: Workspace,
         file_storage: FileStorage,
         transcription_scheduler: TranscriptionScheduler,
+        reply_scheduler: TranscriptionReplyScheduler,
+        cached_transcript_repository: CachedTranscriptRepository,
+        uow: UnitOfWork,
     ) -> None:
         self._media_reader: MessageMediaReader = media_reader
         self._command_answerer: CommandAnswerer = command_answerer
@@ -53,6 +63,11 @@ class RequestTranscription:
         self._workspace: Workspace = workspace
         self._file_storage: FileStorage = file_storage
         self._transcription_scheduler: TranscriptionScheduler = transcription_scheduler
+        self._reply_scheduler: TranscriptionReplyScheduler = reply_scheduler
+        self._cached_transcript_repository: CachedTranscriptRepository = (
+            cached_transcript_repository
+        )
+        self._uow: UnitOfWork = uow
 
     async def __call__(self, data: RequestTranscriptionDTO) -> None:
         media: AttachedMedia | None = await self._media_reader.read_media(data.media_location)
@@ -76,6 +91,24 @@ class RequestTranscription:
 
             return
 
+        async with self._uow:
+            cached_transcript: (
+                CachedTranscript | None
+            ) = await self._cached_transcript_repository.get(media.file_unique_id)
+
+        # a file sent or forwarded again keeps its telegram id, so its transcript needs no download
+        if cached_transcript is not None:
+            await self._reply_scheduler.schedule_transcription_reply(
+                TranscriptionReply(
+                    source=data.source,
+                    trigger=data.trigger,
+                    file_unique_id=media.file_unique_id,
+                    outcome=cached_transcript.transcript,
+                )
+            )
+
+            return
+
         # a voice is transcribed by itself only in private chats, so it shows progress wherever a command does
         if data.source.allows_reactions():
             await self._progress_indicator.show_progress(data.source)
@@ -88,6 +121,7 @@ class RequestTranscription:
             TranscriptionRequest(
                 source=data.source,
                 trigger=data.trigger,
+                file_unique_id=media.file_unique_id,
                 storage_key=storage_key,
             )
         )

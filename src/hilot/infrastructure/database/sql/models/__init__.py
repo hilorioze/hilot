@@ -1,6 +1,7 @@
 from .base import Base
 from .bot_file import BotFileModel
 from .cached_file import CachedFileModel
+from .cached_transcript import CachedTranscriptModel
 from .cached_watermark_check import CachedWatermarkCheckModel
 from .cookie import CookieModel
 from .delivered_part import DeliveredPartModel
@@ -15,6 +16,7 @@ __all__ = [
     "Base",
     "BotFileModel",
     "CachedFileModel",
+    "CachedTranscriptModel",
     "CachedWatermarkCheckModel",
     "CookieModel",
     "DeliveredPartModel",

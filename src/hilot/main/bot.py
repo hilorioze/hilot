@@ -53,6 +53,7 @@ from .di.media import FileHasherProvider, TelegramFileHashProvider, WorkspacePro
 from .di.queue import QueueProvider
 from .di.s3 import S3Provider
 from .di.telegram import SessionProvider, TelegramProvider
+from .di.transcriptions import CachedTranscriptProvider
 from .di.watermarks import CachedWatermarkCheckProvider, DetectableMediaMatcherProvider
 from .worker import configure_logging, run_worker
 
@@ -95,6 +96,7 @@ async def run() -> None:
         FileHasherProvider(),
         TelegramFileHashProvider(),
         CachedWatermarkCheckProvider(),
+        CachedTranscriptProvider(),
         _InteractorProvider(),
         context={
             DatabaseConfig: schema.database,
