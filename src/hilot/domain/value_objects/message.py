@@ -12,6 +12,9 @@ class SourceMessage:
     chat_id: ChatId
     message_id: MessageId
 
+    # as written, without formatting
+    text: str
+
     is_private: bool
     is_saved_messages: bool
 

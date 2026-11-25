@@ -8,11 +8,11 @@ A multi-functional Telegram userbot.
 
 A link in an outgoing or a private message gets the media behind it as a reply.
 
-`.dl` or `.download` downloads the links given to it. In reply to a message, it downloads the links of that message, and the media takes the place of the command.
+`.dl` or `.download` downloads the links given to it. In reply to a message, it downloads the links of that message and sends the media in reply to it.
 
 ### SynthID check
 
-`.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and puts the verdict in place of the command.
+`.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and writes the verdict under the command.
 
 The checks take every synthid.com account signed in from the browser of `hilot-detector`; each has a daily quota per media kind, so the next one takes over. Signing out doesn't remove an account, so they are signed in one after another in the same window.
 

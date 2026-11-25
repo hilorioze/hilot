@@ -15,13 +15,12 @@ from hilot.domain.interfaces.adapters.download_scheduler import DownloadSchedule
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.messenger import (
+    CommandAnswerer,
     MediaRefresher,
     MediaSender,
     MediaUploader,
-    MessageDeleter,
     MessageReader,
     ProgressIndicator,
-    TextEditor,
     TextSender,
 )
 from hilot.domain.interfaces.adapters.workspace import Workspace
@@ -55,8 +54,7 @@ class DeliverMedia:
         media_sender: MediaSender,
         media_refresher: MediaRefresher,
         text_sender: TextSender,
-        text_editor: TextEditor,
-        message_deleter: MessageDeleter,
+        command_answerer: CommandAnswerer,
         failure_formatter: FailureFormatter,
         file_storage: FileStorage,
         workspace: Workspace,
@@ -71,8 +69,7 @@ class DeliverMedia:
         self._media_sender: MediaSender = media_sender
         self._media_refresher: MediaRefresher = media_refresher
         self._text_sender: TextSender = text_sender
-        self._text_editor: TextEditor = text_editor
-        self._message_deleter: MessageDeleter = message_deleter
+        self._command_answerer: CommandAnswerer = command_answerer
         self._failure_formatter: FailureFormatter = failure_formatter
         self._file_storage: FileStorage = file_storage
         self._workspace: Workspace = workspace
@@ -143,8 +140,13 @@ class DeliverMedia:
                 for cached_file in cached_files:
                     await self._cached_file_repository.save(cached_file)
 
-        if request.replaces_command():
-            await self._finish_command(result)
+        if request.answers_in_command() and result.failures:
+            await self._command_answerer.answer_command(
+                source=source,
+                text=self._failure_formatter.format_failures(
+                    failures=result.failures, size_limit=request.size_limit
+                ),
+            )
 
     def _split_parts(
         self, result: DownloadResult
@@ -158,7 +160,7 @@ class DeliverMedia:
         # a command in reply to links reports its failures in its own text
         failures: list[Failure] = (
             result.failures
-            if result.request.reports_failures() and not result.request.replaces_command()
+            if result.request.reports_failures() and not result.request.answers_in_command()
             else []
         )
 
@@ -167,20 +169,6 @@ class DeliverMedia:
             *batched(audio, self._ALBUM_SIZE, strict=False),
             *failures,
         ]
-
-    async def _finish_command(self, result: DownloadResult) -> None:
-        # the media takes the command's place, and the failures replace its text
-        if not result.failures:
-            await self._message_deleter.delete_message(result.request.source)
-
-            return
-
-        await self._text_editor.edit_text(
-            source=result.request.source,
-            text=self._failure_formatter.format_failures(
-                failures=result.failures, size_limit=result.request.size_limit
-            ),
-        )
 
     async def _send_failure(
         self, *, request: DownloadRequest, part: int, failure: Failure

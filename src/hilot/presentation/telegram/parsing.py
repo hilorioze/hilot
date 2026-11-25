@@ -14,6 +14,8 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         account_id=account_id,
         chat_id=ChatId(cast(int, chat.id)),
         message_id=MessageId(message.id),
+        # the text of a media message is its caption
+        text=str(message.text or message.caption or ""),
         is_private=chat.type == ChatType.PRIVATE,
         is_saved_messages=chat.id == account_id,
     )

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, ClassVar, cast, override
 
 from pyrogram import Client, types
-from pyrogram.enums import MessageMediaType
+from pyrogram.enums import MessageMediaType, ParseMode
 from pyrogram.errors import (
     ChannelPrivate,
     FileReferenceExpired,
@@ -54,14 +54,13 @@ from hilot.domain.errors.messenger import (
     MessageGoneError,
 )
 from hilot.domain.interfaces.adapters.messenger import (
+    CommandAnswerer,
     MediaRefresher,
     MediaSender,
     MediaUploader,
-    MessageDeleter,
     MessageMediaReader,
     MessageReader,
     ProgressIndicator,
-    TextEditor,
     TextSender,
     UploadLimitReader,
 )
@@ -78,8 +77,7 @@ class KurigramMessenger(
     MediaSender,
     MediaRefresher,
     TextSender,
-    TextEditor,
-    MessageDeleter,
+    CommandAnswerer,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
 
@@ -258,16 +256,15 @@ class KurigramMessenger(
             )
 
     @override
-    async def edit_text(self, *, source: SourceMessage, text: str) -> None:
-        # the text of a media message is its caption; a redelivered reply finds its text already in place
+    async def answer_command(self, *, source: SourceMessage, text: str) -> None:
+        # the text of a media message is its caption; a redelivered answer finds its text already in place
         with suppress(MessageNotModified):
             await self._client.edit_message_text(
-                chat_id=source.chat_id, message_id=source.message_id, text=text
+                chat_id=source.chat_id,
+                message_id=source.message_id,
+                text=f"{source.text}\n\n{text}",
+                parse_mode=ParseMode.DISABLED,  # kurigram parses markdown and html by default, which a link's underscores would break
             )
-
-    @override
-    async def delete_message(self, source: SourceMessage) -> None:
-        await self._client.delete_messages(chat_id=source.chat_id, message_ids=source.message_id)
 
     async def _save_file_showing_progress(
         self, *, peer: InputPeer, kind: MediaKind, path: Path

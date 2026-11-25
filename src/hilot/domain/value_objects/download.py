@@ -57,7 +57,7 @@ class DownloadTrigger(StrEnum):
     # the owner's `.dl` with links of its own, answered like a link
     COMMAND = "command"
 
-    # the owner's `.dl` in reply to a message with links, which the media takes the place of
+    # the owner's `.dl` in reply to a message with links, whose media replies to that message
     REPLY_COMMAND = "reply_command"
 
 
@@ -86,7 +86,7 @@ class DownloadRequest:
     def reports_failures(self) -> bool:
         return self.is_commanded() or self.source.reports_failures()
 
-    def replaces_command(self) -> bool:
+    def answers_in_command(self) -> bool:
         return self.trigger == DownloadTrigger.REPLY_COMMAND
 
 

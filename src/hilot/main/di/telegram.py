@@ -4,14 +4,13 @@ from pyrogram.storage.storage import Storage
 
 from hilot.domain.interfaces.adapters.chat_bot import ChatBot
 from hilot.domain.interfaces.adapters.messenger import (
+    CommandAnswerer,
     MediaRefresher,
     MediaSender,
     MediaUploader,
-    MessageDeleter,
     MessageMediaReader,
     MessageReader,
     ProgressIndicator,
-    TextEditor,
     TextSender,
     UploadLimitReader,
 )
@@ -67,8 +66,7 @@ class TelegramProvider(Provider):
             MediaSender,
             MediaRefresher,
             TextSender,
-            TextEditor,
-            MessageDeleter,
+            CommandAnswerer,
         ],
         scope=Scope.APP,
     )

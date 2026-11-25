@@ -64,7 +64,7 @@ class WatermarkQuotaExceeded:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class WatermarkCheckRequest:
-    # the command, which the reply replaces
+    # the command, which the reply goes under
     source: SourceMessage
 
     storage_key: StorageKey

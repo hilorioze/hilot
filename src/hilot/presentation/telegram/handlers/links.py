@@ -83,7 +83,7 @@ async def request_download_by_command(
     links: list[Link] = _parse_links(message)
     reply: Message | None = message.reply_to_message
 
-    # a command with links of its own is answered like a link, one in reply takes the place of its links' media
+    # a command with links of its own is answered like a link, one in reply gets its links' media in reply to their message
     if links or reply is None:
         dto: RequestDownloadDTO = RequestDownloadDTO(
             source=parse_source(message=message, account_id=account_id),

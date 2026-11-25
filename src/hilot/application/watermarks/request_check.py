@@ -3,9 +3,9 @@ from pathlib import Path
 
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.messenger import (
+    CommandAnswerer,
     MessageMediaReader,
     ProgressIndicator,
-    TextEditor,
 )
 from hilot.domain.interfaces.adapters.watermark_detector import DetectableMediaMatcher
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
@@ -30,7 +30,7 @@ class RequestWatermarkCheck:
         *,
         media_reader: MessageMediaReader,
         media_matcher: DetectableMediaMatcher,
-        text_editor: TextEditor,
+        command_answerer: CommandAnswerer,
         progress_indicator: ProgressIndicator,
         watermark_formatter: WatermarkFormatter,
         workspace: Workspace,
@@ -39,7 +39,7 @@ class RequestWatermarkCheck:
     ) -> None:
         self._media_reader: MessageMediaReader = media_reader
         self._media_matcher: DetectableMediaMatcher = media_matcher
-        self._text_editor: TextEditor = text_editor
+        self._command_answerer: CommandAnswerer = command_answerer
         self._progress_indicator: ProgressIndicator = progress_indicator
         self._watermark_formatter: WatermarkFormatter = watermark_formatter
         self._workspace: Workspace = workspace
@@ -86,6 +86,6 @@ class RequestWatermarkCheck:
         return None
 
     async def _reply_failure(self, *, source: SourceMessage, failure: WatermarkFailure) -> None:
-        await self._text_editor.edit_text(
+        await self._command_answerer.answer_command(
             source=source, text=self._watermark_formatter.format_outcome(failure)
         )

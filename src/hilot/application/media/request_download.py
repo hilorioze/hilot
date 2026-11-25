@@ -4,9 +4,8 @@ from hilot.domain.interfaces.adapters.download_scheduler import DownloadSchedule
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.interfaces.adapters.link_matcher import LinkMatcher
 from hilot.domain.interfaces.adapters.messenger import (
+    CommandAnswerer,
     ProgressIndicator,
-    TextEditor,
-    TextSender,
     UploadLimitReader,
 )
 from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
@@ -33,8 +32,7 @@ class RequestDownload:
         link_matcher: LinkMatcher,
         redirect_reader: RedirectReader,
         progress_indicator: ProgressIndicator,
-        text_editor: TextEditor,
-        text_sender: TextSender,
+        command_answerer: CommandAnswerer,
         failure_formatter: FailureFormatter,
         upload_limit_reader: UploadLimitReader,
         download_scheduler: DownloadScheduler,
@@ -42,8 +40,7 @@ class RequestDownload:
         self._link_matcher: LinkMatcher = link_matcher
         self._redirect_reader: RedirectReader = redirect_reader
         self._progress_indicator: ProgressIndicator = progress_indicator
-        self._text_editor: TextEditor = text_editor
-        self._text_sender: TextSender = text_sender
+        self._command_answerer: CommandAnswerer = command_answerer
         self._failure_formatter: FailureFormatter = failure_formatter
         self._upload_limit_reader: UploadLimitReader = upload_limit_reader
         self._download_scheduler: DownloadScheduler = download_scheduler
@@ -72,7 +69,9 @@ class RequestDownload:
         # a message without supported links is left alone, a command says so
         if not links:
             if request.is_commanded():
-                await self._report_no_links(request)
+                await self._command_answerer.answer_command(
+                    source=request.source, text=self._failure_formatter.format_no_links()
+                )
 
             return
 
@@ -80,15 +79,6 @@ class RequestDownload:
             await self._progress_indicator.show_progress(data.source)
 
         await self._download_scheduler.schedule_download(request)
-
-    async def _report_no_links(self, request: DownloadRequest) -> None:
-        text: str = self._failure_formatter.format_no_links()
-
-        # a command with links of its own keeps them in sight
-        if request.replaces_command():
-            await self._text_editor.edit_text(source=request.source, text=text)
-        else:
-            await self._text_sender.send_text(source=request.source, part=0, text=text, quote=None)
 
     async def _find_supported_url(self, url: str) -> str | None:
         for _ in range(_MAX_REDIRECTS):
