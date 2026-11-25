@@ -10,6 +10,8 @@ A link in an outgoing or a private message gets the media behind it as a reply.
 
 `.dl` or `.download` downloads the links given to it. In reply to a message, it downloads the links of that message and sends the media in reply to it.
 
+The commands work in any chat, saved messages included, and in a reply to a message from another chat: Telegram gives such a reply only the quoted text, the link preview and the media of that message, so `.dl` takes the quoted and previewed links and `.synth` checks the media.
+
 ### SynthID check
 
 `.synth` or `.synthid` in reply to a photo, a video or an audio, or as its caption, checks it for a [SynthID](https://synthid.com/) watermark and writes the verdict under the command.

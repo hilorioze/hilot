@@ -7,6 +7,7 @@ from hilot.domain.value_objects.message import (
     ChatId,
     CommandAnswer,
     Link,
+    MediaLocation,
     MessageId,
     SourceMessage,
 )
@@ -23,9 +24,7 @@ class MessageReader(Protocol):
 
 
 class MessageMediaReader(Protocol):
-    async def read_media(
-        self, *, chat_id: ChatId, message_id: MessageId
-    ) -> AttachedMedia | None: ...
+    async def read_media(self, location: MediaLocation) -> AttachedMedia | None: ...
 
     async def download_media(self, *, media: AttachedMedia, directory: Path) -> Path: ...
 

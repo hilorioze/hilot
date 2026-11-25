@@ -65,7 +65,13 @@ from hilot.domain.interfaces.adapters.messenger import (
     UploadLimitReader,
 )
 from hilot.domain.value_objects.media import AttachedMedia, FileId, MediaKind, StoredMedia
-from hilot.domain.value_objects.message import ChatId, Link, MessageId, SourceMessage
+from hilot.domain.value_objects.message import (
+    ChatId,
+    Link,
+    MediaLocation,
+    MessageId,
+    SourceMessage,
+)
 
 
 class KurigramMessenger(
@@ -134,14 +140,19 @@ class KurigramMessenger(
         return True
 
     @override
-    async def read_media(self, *, chat_id: ChatId, message_id: MessageId) -> AttachedMedia | None:
-        message: types.Message = await self._get_message(chat_id=chat_id, message_id=message_id)
+    async def read_media(self, location: MediaLocation) -> AttachedMedia | None:
+        message: types.Message = await self._get_message(
+            chat_id=location.chat_id, message_id=location.message_id
+        )
+        holder: types.Message | types.ExternalReplyInfo | None = (
+            message.external_reply if location.is_external_reply else message
+        )
 
-        if message.media is None:
+        if holder is None or holder.media is None:
             return None
 
-        # the media types are named like the message attributes holding them, and a poll or a location has no file
-        media: Any = getattr(message, message.media.value)
+        # the media types are named like the attributes holding them, the same on a message and an external reply, and a poll or a location has no file
+        media: Any = getattr(holder, holder.media.value)
 
         if getattr(media, "file_id", None) is None:
             return None
@@ -150,7 +161,7 @@ class KurigramMessenger(
             file_id=FileId(media.file_id),
             # telegram keeps every photo as a jpeg, so it has no type of its own
             mime_type="image/jpeg"
-            if message.media == MessageMediaType.PHOTO
+            if holder.media == MessageMediaType.PHOTO
             else media.mime_type or self._UNKNOWN_MIME_TYPE,
             size=media.file_size,
         )

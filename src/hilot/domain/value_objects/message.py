@@ -30,6 +30,15 @@ class SourceMessage:
         return self.is_private
 
 
+# a message holds its media, or telegram copies it into a reply when the replied message is in a chat the account can't open
+@dataclass(frozen=True, slots=True, kw_only=True)
+class MediaLocation:
+    chat_id: ChatId
+    message_id: MessageId
+
+    is_external_reply: bool
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
 class Link:
     url: str

@@ -4,7 +4,15 @@ from urllib.parse import urlsplit
 from dishka import FromDishka
 from pyrogram import Client, filters
 from pyrogram.enums import MessageEntityType
-from pyrogram.types import Message, MessageEntity, WebPage
+from pyrogram.types import (
+    Chat,
+    ExternalReplyInfo,
+    LinkPreviewOptions,
+    Message,
+    MessageEntity,
+    TextQuote,
+    WebPage,
+)
 from pyrogram.types.messages_and_media.message import Str
 
 from hilot.application.media.request_download import RequestDownload, RequestDownloadDTO
@@ -21,9 +29,43 @@ _LINK_TYPES: set[MessageEntityType] = {MessageEntityType.URL, MessageEntityType.
 
 def _parse_links(message: Message) -> list[Link]:
     # the text of a media message is its caption
-    text: Str | None = cast(Str | None, message.text or message.caption)
-    entities: list[MessageEntity] = message.entities or message.caption_entities or []
-    video_preview_url: str | None = _get_video_preview_url(message)
+    return _find_links(
+        text=cast(Str | None, message.text or message.caption),
+        entities=message.entities or message.caption_entities or [],
+        video_preview_url=_get_video_preview_url(message),
+    )
+
+
+# a reply to a message in a chat the account can't open carries only the part of its text the reply quotes and the link of its preview
+def _parse_external_reply_links(message: Message) -> list[Link]:
+    quote: TextQuote | None = message.quote
+    external_reply: ExternalReplyInfo = cast(ExternalReplyInfo, message.external_reply)
+    preview: LinkPreviewOptions | None = external_reply.link_preview_options
+    links: dict[str, Link] = {
+        link.url: link
+        for link in (
+            _find_links(
+                text=cast(Str | None, quote.text),
+                entities=quote.entities or [],
+                video_preview_url=None,
+            )
+            if quote is not None
+            else []
+        )
+    }
+
+    # the preview of a quoted link adds nothing
+    if preview is not None and preview.url is not None:
+        links.setdefault(
+            preview.url, Link(url=preview.url, text=preview.url, offset=0, has_video_preview=False)
+        )
+
+    return list(links.values())
+
+
+def _find_links(
+    *, text: Str | None, entities: list[MessageEntity], video_preview_url: str | None
+) -> list[Link]:
     links: dict[str, Link] = {}
 
     if text is None:
@@ -73,7 +115,7 @@ def _add_scheme(url: str) -> str:
 
 
 # the command goes before the links, as only the first matching handler runs
-@router.on_message(filters.outgoing & filters.command(["dl", "download"], prefixes="."))
+@router.on_message(filters.me & filters.command(["dl", "download"], prefixes="."))
 async def request_download_by_command(
     _: Client,
     message: Message,
@@ -84,28 +126,39 @@ async def request_download_by_command(
     reply: Message | None = message.reply_to_message
 
     # a command with links of its own is answered like a link, one in reply gets its links' media in reply to their message
-    if links or reply is None:
+    if links or (reply is None and message.external_reply is None):
         dto: RequestDownloadDTO = RequestDownloadDTO(
             source=parse_source(message=message, account_id=account_id),
             trigger=DownloadTrigger.COMMAND if links else DownloadTrigger.REPLY_COMMAND,
             links=links,
             reply_to=MessageId(message.id),
         )
-    else:
+    elif reply is not None:
         dto = RequestDownloadDTO(
             source=parse_source(message=message, account_id=account_id),
             trigger=DownloadTrigger.REPLY_COMMAND,
             links=_parse_links(reply),
-            reply_to=MessageId(reply.id),
+            # the media stays in the chat of the command, where a message replied to from another chat isn't
+            reply_to=MessageId(
+                reply.id
+                if cast(Chat, reply.chat).id == cast(Chat, message.chat).id
+                else message.id
+            ),
+        )
+    # the replied message of an external reply is out of reach, so the media replies to the command
+    else:
+        dto = RequestDownloadDTO(
+            source=parse_source(message=message, account_id=account_id),
+            trigger=DownloadTrigger.REPLY_COMMAND,
+            links=_parse_external_reply_links(message),
+            reply_to=MessageId(message.id),
         )
 
     await interactor(dto)
 
 
 # a command with a link is for the hilot of its sender
-@router.on_message(
-    filters.text & ~COMMAND & ~BotChatFilter() & (filters.outgoing | filters.private)
-)
+@router.on_message(filters.text & ~COMMAND & ~BotChatFilter() & (filters.me | filters.private))
 async def request_download(
     _: Client,
     message: Message,

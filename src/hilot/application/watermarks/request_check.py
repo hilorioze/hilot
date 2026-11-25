@@ -15,7 +15,7 @@ from hilot.domain.value_objects.media import AttachedMedia, StorageKey
 from hilot.domain.value_objects.message import (
     AnswerKind,
     CommandAnswer,
-    MessageId,
+    MediaLocation,
     SourceMessage,
 )
 from hilot.domain.value_objects.watermark import WatermarkCheckRequest, WatermarkFailure
@@ -25,8 +25,7 @@ from hilot.domain.value_objects.watermark import WatermarkCheckRequest, Watermar
 class RequestWatermarkCheckDTO:
     source: SourceMessage
 
-    # the command itself or the message it replies to
-    media_message_id: MessageId
+    media_location: MediaLocation
 
 
 class RequestWatermarkCheck:
@@ -52,9 +51,7 @@ class RequestWatermarkCheck:
         self._check_scheduler: WatermarkCheckScheduler = check_scheduler
 
     async def __call__(self, data: RequestWatermarkCheckDTO) -> None:
-        media: AttachedMedia | None = await self._media_reader.read_media(
-            chat_id=data.source.chat_id, message_id=data.media_message_id
-        )
+        media: AttachedMedia | None = await self._media_reader.read_media(data.media_location)
 
         if media is None:
             await self._reply_failure(source=data.source, failure=WatermarkFailure.NO_MEDIA)

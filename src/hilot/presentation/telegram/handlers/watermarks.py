@@ -1,28 +1,50 @@
+from typing import cast
+
 from dishka import FromDishka
 from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram.types import Chat, Message
 
 from hilot.application.watermarks.request_check import (
     RequestWatermarkCheck,
     RequestWatermarkCheckDTO,
 )
-from hilot.domain.value_objects.message import AccountId, MessageId
+from hilot.domain.value_objects.message import AccountId, ChatId, MediaLocation, MessageId
 from hilot.presentation.telegram.parsing import parse_source
 from hilot.presentation.telegram.router import Router
 
 router: Router = Router()
 
 
-def _get_media_message_id(message: Message) -> MessageId:
-    # a command without media of its own checks the message it replies to
-    if message.media is None and message.reply_to_message_id is not None:
-        return MessageId(message.reply_to_message_id)
+def _find_media_location(message: Message) -> MediaLocation:
+    # kurigram types every field as optional, telegram sends each message with its chat
+    own: MediaLocation = MediaLocation(
+        chat_id=ChatId(cast(int, cast(Chat, message.chat).id)),
+        message_id=MessageId(message.id),
+        is_external_reply=False,
+    )
+    reply: Message | None = message.reply_to_message
 
-    return MessageId(message.id)
+    if message.media is not None:
+        return own
+
+    # a command without media of its own checks the message it replies to, which can be in another chat
+    if reply is not None:
+        return MediaLocation(
+            chat_id=ChatId(cast(int, cast(Chat, reply.chat).id)),
+            message_id=MessageId(reply.id),
+            is_external_reply=False,
+        )
+
+    if message.external_reply is not None:
+        return MediaLocation(
+            chat_id=own.chat_id, message_id=own.message_id, is_external_reply=True
+        )
+
+    return own
 
 
 # the command checks the media it replies to, or the one it's the caption of
-@router.on_message(filters.outgoing & filters.command(["synth", "synthid"], prefixes="."))
+@router.on_message(filters.me & filters.command(["synth", "synthid"], prefixes="."))
 async def request_watermark_check(
     _: Client,
     message: Message,
@@ -32,6 +54,6 @@ async def request_watermark_check(
     await interactor(
         RequestWatermarkCheckDTO(
             source=parse_source(message=message, account_id=account_id),
-            media_message_id=_get_media_message_id(message),
+            media_location=_find_media_location(message),
         )
     )
