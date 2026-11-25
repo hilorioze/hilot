@@ -14,7 +14,7 @@ The media of a link and of `.dl` goes out with the title, the description and th
 
 Under the command, `.dl` writes the result of each post, its title leading to the message with the media by a `t.me/c/` link, which opens only in supergroups and channels, and the error of each failed link.
 
-The commands work in any chat, saved messages included, and in a reply to a message from another chat: Telegram gives such a reply only the quoted text, the link preview and the media of that message, so `.dl` takes the quoted and previewed links and `.synth` checks the media.
+The commands work in any chat, saved messages included; in a private chat, the other side's commands get the answer in reply. They also work in a reply to a message from another chat: Telegram gives such a reply only the quoted text, the link preview and the media of that message, so `.dl` takes the quoted and previewed links and `.synth` checks the media.
 
 ### SynthID check
 

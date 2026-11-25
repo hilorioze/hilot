@@ -21,6 +21,9 @@ class SourceMessage:
     is_private: bool
     is_saved_messages: bool
 
+    # the owner's own message, which the account can edit; the other side of a private chat calls the commands too
+    is_outgoing: bool
+
     # reactions in saved messages are tags available only with premium
     def allows_reactions(self) -> bool:
         return not self.is_saved_messages
@@ -64,7 +67,7 @@ class AnswerEntry:
     text: RichText
 
 
-# what a command did, which goes under the command so that its text stays in sight; a command over several links can both succeed and fail
+# what a command did; a command over several links can both succeed and fail
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CommandAnswer:
     entries: list[AnswerEntry]

@@ -164,7 +164,7 @@ class DeliverMedia:
                 for cached_file in cached_files:
                     await self._cached_file_repository.save(cached_file)
 
-        if request.answers_in_command():
+        if request.answers_command():
             await self._answer_command(result)
 
     # the command names each post it delivered and leads to its media, then each failure
@@ -237,10 +237,10 @@ class DeliverMedia:
         audio: list[StoredMedia | CachedFile] = [
             media for media in result.media if media.kind == MediaKind.AUDIO
         ]
-        # a command in reply to links reports its failures in its own text
+        # a command reports its failures in its answer
         failures: list[Failure] = (
             result.failures
-            if result.request.reports_failures() and not result.request.answers_in_command()
+            if result.request.reports_failures() and not result.request.answers_command()
             else []
         )
 

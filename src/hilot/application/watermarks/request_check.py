@@ -67,7 +67,7 @@ class RequestWatermarkCheck:
 
             return
 
-        # the owner calls the command on purpose, so unlike a link it shows progress in groups too
+        # the command is called on purpose, so unlike a link it shows progress in groups too
         if data.source.allows_reactions():
             await self._progress_indicator.show_progress(data.source)
 

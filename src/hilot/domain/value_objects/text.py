@@ -27,5 +27,8 @@ class RichText:
             )
         )
 
+    def get_text(self) -> str:
+        return "".join(part.text for part in self.parts)
+
     def __add__(self, other: RichText) -> RichText:
         return RichText((*self.parts, *other.parts))

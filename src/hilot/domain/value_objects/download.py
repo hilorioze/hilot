@@ -54,7 +54,7 @@ class DownloadTrigger(StrEnum):
     # a message with links, downloaded by itself
     LINK = "link"
 
-    # the owner's `.dl`, with links of its own or in reply to a message with links
+    # `.dl` of the owner or of the other side of a private chat, with links of its own or in reply to a message with links
     COMMAND = "command"
 
 
@@ -71,7 +71,7 @@ class DownloadRequest:
 
     size_limit: int
 
-    # the owner calls a command on purpose, so unlike a link it shows progress and failures in groups too
+    # a command is called on purpose, so unlike a link it shows progress and failures in groups too
     def is_commanded(self) -> bool:
         return self.trigger != DownloadTrigger.LINK
 
@@ -83,7 +83,7 @@ class DownloadRequest:
     def reports_failures(self) -> bool:
         return self.is_commanded() or self.source.reports_failures()
 
-    def answers_in_command(self) -> bool:
+    def answers_command(self) -> bool:
         return self.is_commanded()
 
     # a failure among the media of several links names its link

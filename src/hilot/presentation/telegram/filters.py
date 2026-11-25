@@ -30,3 +30,6 @@ class BotChatFilter(Filter):
 
 
 COMMAND: Filter = filters.regex(r"^\.\w")
+
+# the owner calls the commands anywhere, the other side of a private chat in it
+CALLER: Filter = filters.me | (filters.private & ~BotChatFilter())

@@ -68,6 +68,10 @@ class TextEditor(Protocol):
     async def edit_text(self, *, source: SourceMessage, text: RichText) -> None: ...
 
 
-# the answer goes under the command, which shows that the owner called it
+class TextReplier(Protocol):
+    async def reply_text(self, *, source: SourceMessage, text: RichText) -> None: ...
+
+
+# the answer goes under the owner's command, so that its text stays in sight, and in reply to a command of the other side of a private chat
 class CommandAnswerer(Protocol):
     async def answer_command(self, *, source: SourceMessage, answer: CommandAnswer) -> None: ...

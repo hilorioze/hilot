@@ -18,4 +18,5 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         text=str(message.text or message.caption or ""),
         is_private=chat.type == ChatType.PRIVATE,
         is_saved_messages=chat.id == account_id,
+        is_outgoing=bool(message.outgoing),
     )

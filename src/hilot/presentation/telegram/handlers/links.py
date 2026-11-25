@@ -18,7 +18,7 @@ from pyrogram.types.messages_and_media.message import Str
 from hilot.application.media.request_download import RequestDownload, RequestDownloadDTO
 from hilot.domain.value_objects.download import DownloadTrigger
 from hilot.domain.value_objects.message import AccountId, Link, MessageId
-from hilot.presentation.telegram.filters import COMMAND, BotChatFilter
+from hilot.presentation.telegram.filters import CALLER, COMMAND, BotChatFilter
 from hilot.presentation.telegram.parsing import parse_source
 from hilot.presentation.telegram.router import Router
 
@@ -115,7 +115,7 @@ def _add_scheme(url: str) -> str:
 
 
 # the command goes before the links, as only the first matching handler runs
-@router.on_message(filters.me & filters.command(["dl", "download"], prefixes="."))
+@router.on_message(CALLER & filters.command(["dl", "download"], prefixes="."))
 async def request_download_by_command(
     _: Client,
     message: Message,
@@ -157,7 +157,7 @@ async def request_download_by_command(
     await interactor(dto)
 
 
-# a command with a link is for the hilot of its sender
+# the commands of other userbots take links too
 @router.on_message(filters.text & ~COMMAND & ~BotChatFilter() & (filters.me | filters.private))
 async def request_download(
     _: Client,

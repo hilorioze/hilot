@@ -9,6 +9,7 @@ from hilot.application.watermarks.request_check import (
     RequestWatermarkCheckDTO,
 )
 from hilot.domain.value_objects.message import AccountId, ChatId, MediaLocation, MessageId
+from hilot.presentation.telegram.filters import CALLER
 from hilot.presentation.telegram.parsing import parse_source
 from hilot.presentation.telegram.router import Router
 
@@ -44,7 +45,7 @@ def _find_media_location(message: Message) -> MediaLocation:
 
 
 # the command checks the media it replies to, or the one it's the caption of
-@router.on_message(filters.me & filters.command(["synth", "synthid"], prefixes="."))
+@router.on_message(CALLER & filters.command(["synth", "synthid"], prefixes="."))
 async def request_watermark_check(
     _: Client,
     message: Message,

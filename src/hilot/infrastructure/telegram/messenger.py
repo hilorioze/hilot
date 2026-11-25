@@ -66,6 +66,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MessageReader,
     ProgressIndicator,
     TextEditor,
+    TextReplier,
     TextSender,
     UploadLimitReader,
 )
@@ -98,8 +99,12 @@ class KurigramMessenger(
     TextSender,
     MessageLinkReader,
     TextEditor,
+    TextReplier,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
+
+    # the answer to a command goes apart from the parts of its media, which count from 0
+    _ANSWER_PART: ClassVar[int] = -1
 
     _DOCUMENT_FILE_TYPES: ClassVar[dict[MediaKind, FileType]] = {
         MediaKind.VIDEO: FileType.VIDEO,
@@ -292,6 +297,35 @@ class KurigramMessenger(
 
     @override
     async def edit_text(self, *, source: SourceMessage, text: RichText) -> None:
+        # the text of a media message is its caption; a redelivered answer finds its text already in place
+        with suppress(MessageNotModified):
+            # kurigram's `edit_message_text` drops the entities it is given
+            await self._client.invoke(
+                EditMessage(
+                    peer=await self._resolve_peer(source.chat_id),
+                    id=source.message_id,
+                    message=text.get_text(),
+                    entities=self._create_entities(text),
+                )
+            )
+
+    @override
+    async def reply_text(self, *, source: SourceMessage, text: RichText) -> None:
+        # a redelivered answer finds itself already sent
+        with suppress(RandomIdDuplicate):
+            await self._client.invoke(
+                SendMessage(
+                    peer=await self._resolve_peer(source.chat_id),
+                    message=text.get_text(),
+                    random_id=self._get_random_id(source=source, part=self._ANSWER_PART, index=0),
+                    reply_to=self._create_reply_to(message_id=source.message_id, quote=None),
+                    entities=self._create_entities(text),
+                    silent=True,
+                )
+            )
+
+    @staticmethod
+    def _create_entities(text: RichText) -> list[MessageEntity] | None:
         entities: list[MessageEntity] = []
         offset: int = 0
 
@@ -304,18 +338,8 @@ class KurigramMessenger(
 
             offset += length
 
-        # the text of a media message is its caption; a redelivered answer finds its text already in place
-        with suppress(MessageNotModified):
-            # kurigram's `edit_message_text` drops the entities it is given
-            await self._client.invoke(
-                EditMessage(
-                    peer=await self._resolve_peer(source.chat_id),
-                    id=source.message_id,
-                    message="".join(part.text for part in text.parts),
-                    # telegram refuses an empty list as `INPUT_REQUEST_TOO_LONG`
-                    entities=entities or None,
-                )
-            )
+        # telegram refuses an empty list as `INPUT_REQUEST_TOO_LONG`
+        return entities or None
 
     async def _save_file_showing_progress(
         self, *, peer: InputPeer, kind: MediaKind, path: Path

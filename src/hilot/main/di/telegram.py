@@ -14,6 +14,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MessageReader,
     ProgressIndicator,
     TextEditor,
+    TextReplier,
     TextSender,
     UploadLimitReader,
 )
@@ -73,6 +74,7 @@ class TelegramProvider(Provider):
             TextSender,
             MessageLinkReader,
             TextEditor,
+            TextReplier,
         ],
         scope=Scope.APP,
     )
