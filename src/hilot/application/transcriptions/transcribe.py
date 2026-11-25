@@ -61,7 +61,11 @@ class TranscribeSpeech:
             await self._file_storage.delete(data.request.storage_key)
 
         await self._reply_scheduler.schedule_transcription_reply(
-            TranscriptionReply(source=data.request.source, outcome=outcome)
+            TranscriptionReply(
+                source=data.request.source,
+                trigger=data.request.trigger,
+                outcome=outcome,
+            )
         )
 
     async def _transcribe(

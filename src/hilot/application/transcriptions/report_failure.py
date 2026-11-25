@@ -19,5 +19,9 @@ class ReportTranscriptionFailure:
 
     async def __call__(self, data: ReportTranscriptionFailureDTO) -> None:
         await self._reply_scheduler.schedule_transcription_reply(
-            TranscriptionReply(source=data.request.source, outcome=TranscriptionFailure.BUG)
+            TranscriptionReply(
+                source=data.request.source,
+                trigger=data.request.trigger,
+                outcome=TranscriptionFailure.BUG,
+            )
         )

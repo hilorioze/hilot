@@ -19,12 +19,17 @@ from hilot.domain.value_objects.message import (
     SourceMessage,
 )
 from hilot.domain.value_objects.text import RichText
-from hilot.domain.value_objects.transcription import TranscriptionFailure, TranscriptionRequest
+from hilot.domain.value_objects.transcription import (
+    TranscriptionFailure,
+    TranscriptionRequest,
+    TranscriptionTrigger,
+)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class RequestTranscriptionDTO:
     source: SourceMessage
+    trigger: TranscriptionTrigger
 
     media_location: MediaLocation
 
@@ -80,5 +85,9 @@ class RequestTranscription:
             storage_key: StorageKey = await self._file_storage.upload(path)
 
         await self._transcription_scheduler.schedule_transcription(
-            TranscriptionRequest(source=data.source, storage_key=storage_key)
+            TranscriptionRequest(
+                source=data.source,
+                trigger=data.trigger,
+                storage_key=storage_key,
+            )
         )

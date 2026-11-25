@@ -35,6 +35,8 @@ class SourceMessage:
 
     # a link preview isn't media of the message
     has_media: bool
+    # a video note, a sticker or a poll has no caption, so nothing can be written into it
+    takes_text: bool
 
     sent_at: datetime
 

@@ -7,6 +7,7 @@ from hilot.application.transcriptions.request import (
     RequestTranscriptionDTO,
 )
 from hilot.domain.value_objects.message import AccountId
+from hilot.domain.value_objects.transcription import TranscriptionTrigger
 from hilot.presentation.telegram.filters import CALLER, BotChatFilter
 from hilot.presentation.telegram.parsing import parse_media_location, parse_source
 from hilot.presentation.telegram.router import Router
@@ -25,13 +26,14 @@ async def request_transcription(
     await interactor(
         RequestTranscriptionDTO(
             source=parse_source(message=message, account_id=account_id),
+            trigger=TranscriptionTrigger.COMMAND,
             media_location=parse_media_location(message),
         )
     )
 
 
-# a voice in a private chat is transcribed by itself, the owner's and the other side's alike
-@router.on_message(filters.voice & filters.private & ~BotChatFilter())
+# a voice or a video note in a private chat is transcribed by itself, the owner's and the other side's alike
+@router.on_message((filters.voice | filters.video_note) & filters.private & ~BotChatFilter())
 async def transcribe_voice(
     _: Client,
     message: Message,
@@ -41,6 +43,7 @@ async def transcribe_voice(
     await interactor(
         RequestTranscriptionDTO(
             source=parse_source(message=message, account_id=account_id),
+            trigger=TranscriptionTrigger.MEDIA,
             media_location=parse_media_location(message),
         )
     )

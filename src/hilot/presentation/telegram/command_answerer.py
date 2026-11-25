@@ -24,8 +24,8 @@ class ChatCommandAnswerer(CommandAnswerer):
             ],
         )
 
-        # the message of the other side can't be edited
-        if not source.is_outgoing:
+        # the message of the other side can't be edited, and a video note has no text to add to
+        if not source.is_outgoing or not source.takes_text:
             await self._text_replier.reply_text(source=source, text=text)
 
             return

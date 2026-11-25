@@ -37,6 +37,19 @@ _CHAT_KINDS: dict[ChatType, ChatKind] = {
 _LINK_TYPES: set[MessageEntityType] = {MessageEntityType.URL, MessageEntityType.TEXT_LINK}
 
 
+# the messages with a text or a caption
+_TEXT_MEDIA: set[MessageMediaType | None] = {
+    None,
+    MessageMediaType.WEB_PAGE,
+    MessageMediaType.PHOTO,
+    MessageMediaType.VIDEO,
+    MessageMediaType.AUDIO,
+    MessageMediaType.DOCUMENT,
+    MessageMediaType.ANIMATION,
+    MessageMediaType.VOICE,
+}
+
+
 def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
     # kurigram types every field as optional, telegram sends each message with its chat
     chat: Chat = cast(Chat, message.chat)
@@ -55,6 +68,7 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         is_outgoing=bool(message.outgoing)
         or (is_saved_messages and message.forward_origin is None),
         has_media=message.media not in {None, MessageMediaType.WEB_PAGE},
+        takes_text=message.media in _TEXT_MEDIA,
         # kurigram returns naive dates in the local time zone
         sent_at=cast(datetime, message.date).astimezone(UTC),
     )

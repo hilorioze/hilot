@@ -66,7 +66,7 @@ class ReplyTranscription:
 
         if isinstance(data.reply.outcome, Transcript):
             await self._place_transcript(source=source, transcript=data.reply.outcome)
-        else:
+        elif not data.reply.is_silent():
             await self._command_answerer.answer_command(
                 source=source,
                 answer=CommandAnswer(
@@ -85,7 +85,7 @@ class ReplyTranscription:
         if source.allows_reactions():
             await self._progress_indicator.hide_progress(source)
 
-    # the owner's message takes the transcript under its text, the others get it in reply, as a rich message when it's long,
+    # the owner's message takes the transcript under its text when it has one, the others get it in reply, as a rich message when it's long,
     # and one too long even for that or in a chat without the inline bot goes as a file
     async def _place_transcript(self, *, source: SourceMessage, transcript: Transcript) -> None:
         quote: RichText = RichText.styled(transcript.text, style=TextStyle.EXPANDABLE_QUOTE)
@@ -101,7 +101,11 @@ class ReplyTranscription:
             else self._text_limit_reader.get_text_limit()
         )
 
-        if source.is_outgoing and self._text_measurer.measure(text.get_text()) <= limit:
+        if (
+            source.is_outgoing
+            and source.takes_text
+            and self._text_measurer.measure(text.get_text()) <= limit
+        ):
             await self._text_editor.edit_text(source=source, text=text)
         elif (
             self._text_measurer.measure(quote.get_text())

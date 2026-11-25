@@ -6,6 +6,14 @@ from .media import StorageKey
 from .message import SourceMessage
 
 
+class TranscriptionTrigger(StrEnum):
+    # a voice or a video note in a private chat, transcribed by itself
+    MEDIA = "media"
+
+    # `.stt` of the owner or of the other side of a private chat
+    COMMAND = "command"
+
+
 class TranscriptionFailure(StrEnum):
     NO_MEDIA = "no_media"
     NO_SPEECH = "no_speech"
@@ -27,6 +35,7 @@ class Transcript:
 class TranscriptionRequest:
     # the voice message or the command, which the transcript goes under
     source: SourceMessage
+    trigger: TranscriptionTrigger
 
     storage_key: StorageKey
 
@@ -34,5 +43,13 @@ class TranscriptionRequest:
 @dataclass(frozen=True, slots=True, kw_only=True)
 class TranscriptionReply:
     source: SourceMessage
+    trigger: TranscriptionTrigger
 
     outcome: Transcript | TranscriptionQuotaExceeded | TranscriptionFailure
+
+    # a video note is often filmed without a word, so a media transcribed by itself says nothing then
+    def is_silent(self) -> bool:
+        return (
+            self.trigger == TranscriptionTrigger.MEDIA
+            and self.outcome == TranscriptionFailure.NO_SPEECH
+        )
