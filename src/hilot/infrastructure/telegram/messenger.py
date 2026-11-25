@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, ClassVar, cast, override
 
 from pyrogram import Client, types
-from pyrogram.enums import MessageMediaType, ParseMode
+from pyrogram.enums import MessageEntityType, MessageMediaType, ParseMode
 from pyrogram.errors import (
     ChannelPrivate,
     FileReferenceExpired,
@@ -45,7 +45,7 @@ from pyrogram.raw.types.send_message_upload_photo_action import SendMessageUploa
 from pyrogram.raw.types.send_message_upload_video_action import SendMessageUploadVideoAction
 from pyrogram.raw.types.update_message_id import UpdateMessageID
 from pyrogram.raw.types.updates_t import Updates
-from pyrogram.utils import get_input_media_from_file_id
+from pyrogram.utils import get_input_media_from_file_id, get_raw_peer_id
 
 from hilot.domain.entities.cached_file import CachedFile
 from hilot.domain.errors.messenger import (
@@ -58,6 +58,7 @@ from hilot.domain.interfaces.adapters.messenger import (
     MediaRefresher,
     MediaSender,
     MediaUploader,
+    MessageLinkReader,
     MessageMediaReader,
     MessageReader,
     ProgressIndicator,
@@ -79,6 +80,7 @@ from hilot.domain.value_objects.message import (
     MessageId,
     SourceMessage,
 )
+from hilot.domain.value_objects.text import RichText
 
 
 class KurigramMessenger(
@@ -91,6 +93,7 @@ class KurigramMessenger(
     MediaSender,
     MediaRefresher,
     TextSender,
+    MessageLinkReader,
     TextEditor,
 ):
     _PROGRESS_REACTION: ClassVar[str] = "👀"
@@ -279,15 +282,40 @@ class KurigramMessenger(
                 )
             )
 
+    # `t.me/c/` names a supergroup or a channel by its id without `-100`; the clients open no message of the other chats by it
     @override
-    async def edit_text(self, *, source: SourceMessage, text: str) -> None:
+    def get_message_link(self, *, chat_id: ChatId, message_id: MessageId) -> str:
+        return f"https://t.me/c/{get_raw_peer_id(chat_id)}/{message_id}"
+
+    @override
+    async def edit_text(self, *, source: SourceMessage, text: RichText) -> None:
+        entities: list[types.MessageEntity] = []
+        offset: int = 0
+
+        # telegram measures the entities in utf-16 code units
+        for part in text.parts:
+            length: int = len(part.text.encode("utf-16-le")) // 2
+
+            if part.url is not None:
+                entities.append(
+                    types.MessageEntity(
+                        type=MessageEntityType.TEXT_LINK,
+                        offset=offset,
+                        length=length,
+                        url=part.url,
+                    )
+                )
+
+            offset += length
+
         # the text of a media message is its caption; a redelivered answer finds its text already in place
         with suppress(MessageNotModified):
             await self._client.edit_message_text(
                 chat_id=source.chat_id,
                 message_id=source.message_id,
-                text=text,
+                text="".join(part.text for part in text.parts),
                 parse_mode=ParseMode.DISABLED,  # kurigram parses markdown and html by default, which a link's underscores would break
+                entities=entities,
             )
 
     async def _save_file_showing_progress(

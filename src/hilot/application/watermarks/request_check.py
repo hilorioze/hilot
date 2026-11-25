@@ -13,11 +13,13 @@ from hilot.domain.interfaces.adapters.watermark_scheduler import WatermarkCheckS
 from hilot.domain.interfaces.adapters.workspace import Workspace
 from hilot.domain.value_objects.media import AttachedMedia, StorageKey
 from hilot.domain.value_objects.message import (
+    AnswerEntry,
     AnswerKind,
     CommandAnswer,
     MediaLocation,
     SourceMessage,
 )
+from hilot.domain.value_objects.text import RichText
 from hilot.domain.value_objects.watermark import WatermarkCheckRequest, WatermarkFailure
 
 
@@ -91,6 +93,11 @@ class RequestWatermarkCheck:
         await self._command_answerer.answer_command(
             source=source,
             answer=CommandAnswer(
-                kind=AnswerKind.ERROR, entries=[self._watermark_formatter.format_outcome(failure)]
+                entries=[
+                    AnswerEntry(
+                        kind=AnswerKind.ERROR,
+                        text=RichText.plain(self._watermark_formatter.format_outcome(failure)),
+                    )
+                ]
             ),
         )

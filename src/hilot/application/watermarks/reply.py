@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 from hilot.domain.interfaces.adapters.messenger import CommandAnswerer, ProgressIndicator
 from hilot.domain.interfaces.adapters.watermark_formatter import WatermarkFormatter
-from hilot.domain.value_objects.message import AnswerKind, CommandAnswer
+from hilot.domain.value_objects.message import AnswerEntry, AnswerKind, CommandAnswer
+from hilot.domain.value_objects.text import RichText
 from hilot.domain.value_objects.watermark import WatermarkReply
 
 
@@ -27,8 +28,14 @@ class ReplyWatermarkCheck:
         await self._command_answerer.answer_command(
             source=data.reply.source,
             answer=CommandAnswer(
-                kind=AnswerKind.RESULT if data.reply.is_verdict() else AnswerKind.ERROR,
-                entries=[self._watermark_formatter.format_outcome(data.reply.outcome)],
+                entries=[
+                    AnswerEntry(
+                        kind=AnswerKind.RESULT if data.reply.is_verdict() else AnswerKind.ERROR,
+                        text=RichText.plain(
+                            self._watermark_formatter.format_outcome(data.reply.outcome)
+                        ),
+                    )
+                ]
             ),
         )
 

@@ -41,6 +41,7 @@ _CONVERTERS: ConversionRetort = ConversionRetort(
         coercer(str, FileId, FileId),
         coercer(str, StorageKey, StorageKey),
         link_function(get_converter(CachedFileModel, MediaKey), P[CachedFile].media_key),
+        link_function(get_converter(CachedFileModel, MediaInfo), P[CachedFile].info),
         link_function(_get_post, P[CachedFile].post),
         link_function(get_converter(StoredFileModel, MediaKey), P[StoredFile].media_key),
         link_function(get_converter(StoredFileModel, MediaInfo), P[StoredFile].info),
@@ -49,7 +50,7 @@ _CONVERTERS: ConversionRetort = ConversionRetort(
 )
 _ROW_RETORT: Retort = Retort(
     recipe=[
-        name_mapping(CachedFile, skip=["media_key", "post"]),
+        name_mapping(CachedFile, skip=["media_key", "info", "post"]),
         name_mapping(StoredFile, skip=["media_key", "info", "post"]),
         name_mapping(
             PostDetails,
@@ -84,6 +85,7 @@ def convert_cached_file_entity_to_row(cached_file: CachedFile) -> dict[str, Any]
     return (
         _ROW_RETORT.dump(cached_file)
         | _ROW_RETORT.dump(cached_file.media_key)
+        | _ROW_RETORT.dump(cached_file.info)
         | _ROW_RETORT.dump(cached_file.post)
     )
 

@@ -11,6 +11,7 @@ from hilot.domain.value_objects.message import (
     MessageId,
     SourceMessage,
 )
+from hilot.domain.value_objects.text import RichText
 
 
 class ProgressIndicator(Protocol):
@@ -59,8 +60,12 @@ class TextSender(Protocol):
     ) -> None: ...
 
 
+class MessageLinkReader(Protocol):
+    def get_message_link(self, *, chat_id: ChatId, message_id: MessageId) -> str: ...
+
+
 class TextEditor(Protocol):
-    async def edit_text(self, *, source: SourceMessage, text: str) -> None: ...
+    async def edit_text(self, *, source: SourceMessage, text: RichText) -> None: ...
 
 
 # the answer goes under the command, which shows that the owner called it

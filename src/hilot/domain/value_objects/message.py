@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import NewType
 
+from .text import RichText
+
 AccountId = NewType("AccountId", int)
 ChatId = NewType("ChatId", int)
 MessageId = NewType("MessageId", int)
@@ -56,8 +58,13 @@ class AnswerKind(StrEnum):
     ERROR = "error"
 
 
-# what a command did, which goes under the command so that its text stays in sight
+@dataclass(frozen=True, slots=True, kw_only=True)
+class AnswerEntry:
+    kind: AnswerKind
+    text: RichText
+
+
+# what a command did, which goes under the command so that its text stays in sight; a command over several links can both succeed and fail
 @dataclass(frozen=True, slots=True, kw_only=True)
 class CommandAnswer:
-    kind: AnswerKind
-    entries: list[str]
+    entries: list[AnswerEntry]

@@ -125,18 +125,18 @@ async def request_download_by_command(
     links: list[Link] = _parse_links(message)
     reply: Message | None = message.reply_to_message
 
-    # a command with links of its own is answered like a link, one in reply gets its links' media in reply to their message
+    # a command with links of its own gets their media in reply, one in reply gets its links' media in reply to their message
     if links or (reply is None and message.external_reply is None):
         dto: RequestDownloadDTO = RequestDownloadDTO(
             source=parse_source(message=message, account_id=account_id),
-            trigger=DownloadTrigger.COMMAND if links else DownloadTrigger.REPLY_COMMAND,
+            trigger=DownloadTrigger.COMMAND,
             links=links,
             reply_to=MessageId(message.id),
         )
     elif reply is not None:
         dto = RequestDownloadDTO(
             source=parse_source(message=message, account_id=account_id),
-            trigger=DownloadTrigger.REPLY_COMMAND,
+            trigger=DownloadTrigger.COMMAND,
             links=_parse_links(reply),
             # the media stays in the chat of the command, where a message replied to from another chat isn't
             reply_to=MessageId(
@@ -149,7 +149,7 @@ async def request_download_by_command(
     else:
         dto = RequestDownloadDTO(
             source=parse_source(message=message, account_id=account_id),
-            trigger=DownloadTrigger.REPLY_COMMAND,
+            trigger=DownloadTrigger.COMMAND,
             links=_parse_external_reply_links(message),
             reply_to=MessageId(message.id),
         )

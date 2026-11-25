@@ -1,7 +1,8 @@
 from typing import override
 
 from hilot.domain.interfaces.adapters.messenger import CommandAnswerer, TextEditor
-from hilot.domain.value_objects.message import CommandAnswer, SourceMessage
+from hilot.domain.value_objects.message import AnswerKind, CommandAnswer, SourceMessage
+from hilot.domain.value_objects.text import RichText
 
 
 class ChatCommandAnswerer(CommandAnswerer):
@@ -10,14 +11,27 @@ class ChatCommandAnswerer(CommandAnswerer):
 
     @override
     async def answer_command(self, *, source: SourceMessage, answer: CommandAnswer) -> None:
+        sections: dict[AnswerKind, list[RichText]] = {}
+
+        for entry in answer.entries:
+            sections.setdefault(entry.kind, []).append(entry.text)
+
         await self._text_editor.edit_text(
-            source=source, text=f"{source.text}\n\n{self._format_answer(answer)}"
+            source=source,
+            text=RichText.plain(f"{source.text}\n\n")
+            + RichText.join(
+                separator="\n",
+                texts=[
+                    self._format_section(kind=kind, texts=texts)
+                    for kind, texts in sections.items()
+                ],
+            ),
         )
 
     # a single entry follows its kind, several go under it one per line
     @staticmethod
-    def _format_answer(answer: CommandAnswer) -> str:
-        if len(answer.entries) == 1:
-            return f"{answer.kind}: {answer.entries[0]}"
+    def _format_section(*, kind: AnswerKind, texts: list[RichText]) -> RichText:
+        if len(texts) == 1:
+            return RichText.plain(f"{kind}: ") + texts[0]
 
-        return "\n".join([f"{answer.kind}s:", *answer.entries])
+        return RichText.join(separator="\n", texts=[RichText.plain(f"{kind}s:"), *texts])

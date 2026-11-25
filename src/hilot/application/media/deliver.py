@@ -12,6 +12,7 @@ from hilot.domain.errors.messenger import (
     MessageGoneError,
 )
 from hilot.domain.interfaces.adapters.caption_formatter import CaptionFormatter
+from hilot.domain.interfaces.adapters.delivery_formatter import DeliveryFormatter
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
@@ -30,18 +31,27 @@ from hilot.domain.interfaces.repositories.cached_file import CachedFileRepositor
 from hilot.domain.interfaces.repositories.delivered_part import DeliveredPartRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
 from hilot.domain.value_objects.download import (
+    DeliveredPost,
     DownloadRequest,
     DownloadResult,
     Failure,
 )
-from hilot.domain.value_objects.media import FileId, MediaKind, OutgoingMedia, StoredMedia
+from hilot.domain.value_objects.media import (
+    FileId,
+    MediaKind,
+    OutgoingMedia,
+    PostDetails,
+    StoredMedia,
+)
 from hilot.domain.value_objects.message import (
+    AnswerEntry,
     AnswerKind,
     CommandAnswer,
     Link,
     MessageId,
     SourceMessage,
 )
+from hilot.domain.value_objects.text import RichText
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -64,6 +74,7 @@ class DeliverMedia:
         text_sender: TextSender,
         command_answerer: CommandAnswerer,
         failure_formatter: FailureFormatter,
+        delivery_formatter: DeliveryFormatter,
         caption_formatter: CaptionFormatter,
         caption_limit_reader: CaptionLimitReader,
         file_storage: FileStorage,
@@ -81,6 +92,7 @@ class DeliverMedia:
         self._text_sender: TextSender = text_sender
         self._command_answerer: CommandAnswerer = command_answerer
         self._failure_formatter: FailureFormatter = failure_formatter
+        self._delivery_formatter: DeliveryFormatter = delivery_formatter
         self._caption_formatter: CaptionFormatter = caption_formatter
         self._caption_limit_reader: CaptionLimitReader = caption_limit_reader
         self._file_storage: FileStorage = file_storage
@@ -152,16 +164,69 @@ class DeliverMedia:
                 for cached_file in cached_files:
                     await self._cached_file_repository.save(cached_file)
 
-        if request.answers_in_command() and result.failures:
-            await self._command_answerer.answer_command(
-                source=source,
-                answer=CommandAnswer(
-                    kind=AnswerKind.ERROR,
-                    entries=self._failure_formatter.format_failures(
-                        failures=result.failures, size_limit=request.size_limit
-                    ),
-                ),
+        if request.answers_in_command():
+            await self._answer_command(result)
+
+    # the command names each post it delivered and leads to its media, then each failure
+    async def _answer_command(self, result: DownloadResult) -> None:
+        request: DownloadRequest = result.request
+        entries: list[AnswerEntry] = [
+            *(
+                AnswerEntry(
+                    kind=AnswerKind.RESULT,
+                    text=self._delivery_formatter.format_delivered_post(post),
+                )
+                for post in await self._find_delivered_posts(result)
+            ),
+            *(
+                AnswerEntry(kind=AnswerKind.ERROR, text=RichText.plain(text))
+                for text in self._failure_formatter.format_failures(
+                    failures=result.failures,
+                    size_limit=request.size_limit,
+                    names_links=request.names_links(),
+                )
+            ),
+        ]
+
+        await self._command_answerer.answer_command(
+            source=request.source,
+            answer=CommandAnswer(
+                entries=entries
+                or [
+                    AnswerEntry(
+                        kind=AnswerKind.ERROR,
+                        text=RichText.plain(self._failure_formatter.format_no_media()),
+                    )
+                ]
+            ),
+        )
+
+    # the cached files point at the messages of every part, the ones an earlier attempt delivered too
+    async def _find_delivered_posts(self, result: DownloadResult) -> list[DeliveredPost]:
+        files: dict[PostDetails, list[CachedFile]] = {}
+
+        async with self._uow:
+            for media in result.media:
+                cached_file: CachedFile | None = await self._cached_file_repository.get(
+                    account_id=result.request.source.account_id, media_key=media.media_key
+                )
+
+                # a later delivery of the same media to another chat replaces its cached file
+                if (
+                    cached_file is not None
+                    and cached_file.chat_id == result.request.source.chat_id
+                ):
+                    files.setdefault(cached_file.post, []).append(cached_file)
+
+        return [
+            DeliveredPost(
+                post=post,
+                media=[cached_file.info for cached_file in cached_files],
+                chat_id=cached_files[0].chat_id,
+                message_id=min(cached_file.message_id for cached_file in cached_files),
             )
+            for post, cached_files in files.items()
+        ]
 
     def _split_parts(
         self, result: DownloadResult
@@ -228,8 +293,8 @@ class DeliverMedia:
             CachedFile(
                 account_id=source.account_id,
                 media_key=item.media_key,
-                kind=item.kind,
                 file_id=file_id,
+                info=item.info,
                 chat_id=source.chat_id,
                 message_id=message_id,
                 post=item.post,

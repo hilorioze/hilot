@@ -11,12 +11,14 @@ from hilot.domain.interfaces.adapters.messenger import (
 from hilot.domain.interfaces.adapters.redirect_reader import RedirectReader
 from hilot.domain.value_objects.download import DownloadRequest, DownloadTrigger
 from hilot.domain.value_objects.message import (
+    AnswerEntry,
     AnswerKind,
     CommandAnswer,
     Link,
     MessageId,
     SourceMessage,
 )
+from hilot.domain.value_objects.text import RichText
 
 # a share link leads to the link of its post through a couple of redirects
 _MAX_REDIRECTS: int = 5
@@ -78,7 +80,12 @@ class RequestDownload:
                 await self._command_answerer.answer_command(
                     source=request.source,
                     answer=CommandAnswer(
-                        kind=AnswerKind.ERROR, entries=[self._failure_formatter.format_no_links()]
+                        entries=[
+                            AnswerEntry(
+                                kind=AnswerKind.ERROR,
+                                text=RichText.plain(self._failure_formatter.format_no_links()),
+                            )
+                        ]
                     ),
                 )
 

@@ -12,6 +12,8 @@ The media of a link and of `.dl` goes out with the title, the description and th
 
 `.dl` or `.download` downloads the links given to it. In reply to a message, it downloads the links of that message and sends the media in reply to it.
 
+Under the command, `.dl` writes the result of each post, its title leading to the message with the media by a `t.me/c/` link, which opens only in supergroups and channels, and the error of each failed link.
+
 The commands work in any chat, saved messages included, and in a reply to a message from another chat: Telegram gives such a reply only the quoted text, the link preview and the media of that message, so `.dl` takes the quoted and previewed links and `.synth` checks the media.
 
 ### SynthID check

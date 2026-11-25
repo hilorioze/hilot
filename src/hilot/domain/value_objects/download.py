@@ -11,8 +11,8 @@ from hilot.domain.errors.extraction import (
     TooBigError,
 )
 
-from .media import StoredMedia
-from .message import Link, MessageId, SourceMessage
+from .media import MediaInfo, PostDetails, StoredMedia
+from .message import ChatId, Link, MessageId, SourceMessage
 
 
 class FailureReason(StrEnum):
@@ -54,11 +54,8 @@ class DownloadTrigger(StrEnum):
     # a message with links, downloaded by itself
     LINK = "link"
 
-    # the owner's `.dl` with links of its own, answered like a link
+    # the owner's `.dl`, with links of its own or in reply to a message with links
     COMMAND = "command"
-
-    # the owner's `.dl` in reply to a message with links, whose media replies to that message
-    REPLY_COMMAND = "reply_command"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -87,7 +84,21 @@ class DownloadRequest:
         return self.is_commanded() or self.source.reports_failures()
 
     def answers_in_command(self) -> bool:
-        return self.trigger == DownloadTrigger.REPLY_COMMAND
+        return self.is_commanded()
+
+    # a failure among the media of several links names its link
+    def names_links(self) -> bool:
+        return len(self.links) > 1
+
+
+# a post whose media went out, with the first message holding it
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DeliveredPost:
+    post: PostDetails
+    media: list[MediaInfo]
+
+    chat_id: ChatId
+    message_id: MessageId
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

@@ -3,6 +3,8 @@ from typing import ClassVar, override
 from hilot.domain.interfaces.adapters.failure_formatter import FailureFormatter
 from hilot.domain.value_objects.download import Failure, FailureReason
 
+from .units import format_size
+
 
 class ChatFailureFormatter(FailureFormatter):
     _TEXTS: ClassVar[dict[FailureReason, str]] = {
@@ -18,18 +20,19 @@ class ChatFailureFormatter(FailureFormatter):
             return self._TEXTS[failure.reason]
 
         if failure.size is None:
-            return f"too big, limit is {self._format_size(size_limit)}"
+            return f"too big, limit is {format_size(size_limit)}"
 
-        return (
-            f"too big: {self._format_size(failure.size)}, limit is {self._format_size(size_limit)}"
-        )
+        return f"too big: {format_size(failure.size)}, limit is {format_size(size_limit)}"
 
     @override
-    def format_failures(self, *, failures: list[Failure], size_limit: int) -> list[str]:
-        if len(failures) == 1:
-            return [self.format_failure(failure=failures[0], size_limit=size_limit)]
+    def format_failures(
+        self, *, failures: list[Failure], size_limit: int, names_links: bool
+    ) -> list[str]:
+        if not names_links:
+            return [
+                self.format_failure(failure=failure, size_limit=size_limit) for failure in failures
+            ]
 
-        # several failures name their links
         return [
             f"{failure.link.text}: {self.format_failure(failure=failure, size_limit=size_limit)}"
             for failure in failures
@@ -39,6 +42,6 @@ class ChatFailureFormatter(FailureFormatter):
     def format_no_links(self) -> str:
         return "nothing to download, add a link or reply to one"
 
-    @staticmethod
-    def _format_size(size: int) -> str:
-        return f"{round(size / 1024**3, 1):g} GB"
+    @override
+    def format_no_media(self) -> str:
+        return "found no media"
