@@ -107,10 +107,13 @@ def convert_cached_watermark_check_model_to_entity(
     )
 
 
-def convert_cached_transcript_model_to_entity(model: CachedTranscriptModel) -> CachedTranscript:
+def convert_cached_transcript_model_to_entity(
+    *, model: CachedTranscriptModel, text: str
+) -> CachedTranscript:
     return CachedTranscript(
         file_unique_id=FileUniqueId(model.file_unique_id),
-        transcript=Transcript(text=model.text),
+        transcript=Transcript(text=text),
+        cached_at=model.cached_at,
     )
 
 
@@ -161,8 +164,12 @@ def convert_cached_watermark_check_entity_to_row(
     }
 
 
-def convert_cached_transcript_entity_to_row(cached_transcript: CachedTranscript) -> dict[str, Any]:
+def convert_cached_transcript_entity_to_row(
+    *, cached_transcript: CachedTranscript, encrypted_text: bytes
+) -> dict[str, Any]:
     return {
         "file_unique_id": cached_transcript.file_unique_id,
-        "text": cached_transcript.transcript.text,
+        "encrypted_text": encrypted_text,
+        "cached_at": cached_transcript.cached_at,
+        "expires_at": cached_transcript.get_expiry(),
     }

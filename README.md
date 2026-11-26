@@ -48,7 +48,7 @@ Secrets come from [secretspec](https://secretspec.dev/); the `development` profi
 | --- | --- | --- |
 | `SESSION_STRING` | bot | the output of `hilot-login` |
 | `INLINE_BOT__TOKEN` | bot | |
-| `ENCRYPTION__KEYS` | downloader, detector, cookies | JSON list of [Fernet](https://cryptography.io/en/latest/fernet/) keys for the cookies and the synthid.com accounts in the database; the first one encrypts, so a new key goes first |
+| `ENCRYPTION__KEYS` | bot, downloader, detector, cookies | JSON list of [Fernet](https://cryptography.io/en/latest/fernet/) keys for the cookies, the synthid.com accounts and the transcripts in the database; the first one encrypts, so a new key goes first |
 | `DOWNLOADER__PROXY` | downloader | optional proxy URL for the downloads |
 | `GROQ__API_KEY` | transcriber | |
 | `NATS__TOKEN` | bot, downloader, transcoder, detector, transcriber | |

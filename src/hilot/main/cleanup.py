@@ -10,6 +10,7 @@ from .config.schemas import CleanupSchema
 from .config.stored_file import StoredFileConfig
 from .di.database import DatabaseProvider
 from .di.stored_file import StoredFileProvider
+from .di.transcriptions import CachedTranscriptExpiryProvider
 from .di.watermarks import CachedWatermarkCheckProvider
 
 
@@ -26,6 +27,7 @@ async def run() -> None:
         DatabaseProvider(),
         StoredFileProvider(),
         CachedWatermarkCheckProvider(),
+        CachedTranscriptExpiryProvider(),
         _InteractorProvider(),
         context={DatabaseConfig: schema.database, StoredFileConfig: schema.stored_file},
     )

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import ClassVar
 
 from hilot.domain.entities.cached_transcript import CachedTranscript
@@ -77,7 +78,9 @@ class ReplyTranscription:
             async with self._uow:
                 await self._cached_transcript_repository.save(
                     CachedTranscript(
-                        file_unique_id=data.reply.file_unique_id, transcript=data.reply.outcome
+                        file_unique_id=data.reply.file_unique_id,
+                        transcript=data.reply.outcome,
+                        cached_at=datetime.now(UTC),
                     )
                 )
 

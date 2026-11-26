@@ -21,6 +21,7 @@ class BotSchema:
     bot: BotConfig
     telegram: TelegramConfig
     inline_bot: InlineBotConfig
+    encryption: EncryptionConfig
     database: DatabaseConfig
     nats: NATSConfig
     s3: S3Config

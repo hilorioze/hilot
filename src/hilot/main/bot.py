@@ -36,6 +36,7 @@ from hilot.presentation.taskiq.transcriptions import reply_transcription
 from hilot.presentation.taskiq.watermarks import reply_watermark_check
 
 from .config.database import DatabaseConfig
+from .config.encryption import EncryptionConfig
 from .config.inline_bot import InlineBotConfig
 from .config.loader import load_config
 from .config.nats import NATSConfig
@@ -44,6 +45,7 @@ from .config.schemas import BotSchema
 from .config.telegram import TelegramConfig
 from .config.worker import BotConfig
 from .di.database import DatabaseProvider
+from .di.encryption import EncryptionProvider
 from .di.extractors import LinkMatcherProvider
 from .di.formatters import FormatterProvider
 from .di.handlers import HandlerProvider
@@ -82,6 +84,7 @@ async def run() -> None:
 
     container: AsyncContainer = make_async_container(
         DatabaseProvider(),
+        EncryptionProvider(),
         S3Provider(),
         QueueProvider(),
         SessionProvider(),
@@ -99,6 +102,7 @@ async def run() -> None:
         _InteractorProvider(),
         context={
             DatabaseConfig: schema.database,
+            EncryptionConfig: schema.encryption,
             S3Config: schema.s3,
             NATSConfig: schema.nats,
             # the file ids of the uploads belong to the account, so only its bot delivers them
