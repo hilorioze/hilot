@@ -6,7 +6,6 @@ from taskiq import AsyncBroker
 
 from hilot.domain.interfaces.adapters.delivery_scheduler import DeliveryScheduler
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
-from hilot.domain.interfaces.adapters.preview_wait_scheduler import PreviewWaitScheduler
 from hilot.domain.interfaces.adapters.transcode_scheduler import TranscodeScheduler
 from hilot.domain.interfaces.adapters.transcription_scheduler import (
     TranscriptionReplyScheduler,
@@ -47,7 +46,6 @@ class QueueProvider(Provider):
     scheduler = provide(
         TaskiqScheduler,
         provides=AnyOf[
-            PreviewWaitScheduler,
             DownloadScheduler,
             TranscodeScheduler,
             DeliveryScheduler,

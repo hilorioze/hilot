@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 from enum import StrEnum
 from typing import NewType
 
@@ -38,8 +37,6 @@ class SourceMessage:
     # a video note, a sticker or a poll has no caption, so nothing can be written into it
     takes_text: bool
 
-    sent_at: datetime
-
     @property
     def is_private(self) -> bool:
         return self.chat_kind == ChatKind.PRIVATE
@@ -71,18 +68,6 @@ class Link:
     # the link as written in the message text and its utf-16 offset, to quote it in replies
     text: str
     offset: int
-
-
-# telegram builds the preview of a link it hasn't seen yet after the message is sent and puts it in by an edit
-@dataclass(frozen=True, slots=True, kw_only=True)
-class LinkPreview:
-    # telegram may leave out the url of a preview it still builds
-    url: str | None
-
-    is_pending: bool
-
-    # only a large preview plays its video on every client: telegram desktop opens the site from a small one
-    plays_video: bool
 
 
 class AnswerKind(StrEnum):

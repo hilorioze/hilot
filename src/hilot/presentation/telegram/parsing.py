@@ -1,4 +1,3 @@
-from datetime import UTC, datetime
 from typing import cast
 from urllib.parse import urlsplit
 
@@ -69,8 +68,6 @@ def parse_source(*, message: Message, account_id: AccountId) -> SourceMessage:
         or (is_saved_messages and message.forward_origin is None),
         has_media=message.media not in {None, MessageMediaType.WEB_PAGE},
         takes_text=message.media in _TEXT_MEDIA,
-        # kurigram returns naive dates in the local time zone
-        sent_at=cast(datetime, message.date).astimezone(UTC),
     )
 
 

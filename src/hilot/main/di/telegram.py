@@ -6,7 +6,6 @@ from hilot.domain.interfaces.adapters.chat_bot import ChatBot
 from hilot.domain.interfaces.adapters.messenger import (
     CaptionLimitReader,
     CommandAnswerer,
-    LinkPreviewReader,
     MediaAttacher,
     MediaRefresher,
     MediaSender,
@@ -71,7 +70,6 @@ class TelegramProvider(Provider):
         provides=AnyOf[
             ProgressIndicator,
             MessageReader,
-            LinkPreviewReader,
             MessageMediaReader,
             UploadLimitReader,
             CaptionLimitReader,

@@ -8,7 +8,6 @@ from hilot.domain.value_objects.message import (
     ChatId,
     CommandAnswer,
     Link,
-    LinkPreview,
     MediaLocation,
     MessageId,
     SourceMessage,
@@ -25,13 +24,6 @@ class ProgressIndicator(Protocol):
 
 class MessageReader(Protocol):
     async def message_exists(self, source: SourceMessage) -> bool: ...
-
-
-class LinkPreviewReader(Protocol):
-    async def read_link_preview(self, source: SourceMessage) -> LinkPreview | None: ...
-
-    # the url telegram gives the preview of a link, `None` when it has none
-    async def read_preview_url(self, url: str) -> str | None: ...
 
 
 class MessageMediaReader(Protocol):

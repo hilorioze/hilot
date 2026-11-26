@@ -12,7 +12,6 @@ from dishka import (
 from pyrogram import Client
 
 from hilot.application.check_ins.check_in import RunCheckIn
-from hilot.application.media.await_preview import AwaitLinkPreview
 from hilot.application.media.deliver import DeliverMedia
 from hilot.application.media.links import SupportedLinkFinder
 from hilot.application.media.request_download import RequestDownload
@@ -25,13 +24,12 @@ from hilot.domain.value_objects.message import AccountId
 from hilot.infrastructure.queue.routes import (
     Route,
     get_delivery_route,
-    get_preview_wait_route,
     get_transcription_reply_route,
     get_watermark_reply_route,
 )
 from hilot.infrastructure.telegram.authorization import Authorization
 from hilot.presentation.schedule.check_ins import run_check_ins
-from hilot.presentation.taskiq.media import await_link_preview, deliver_media
+from hilot.presentation.taskiq.media import deliver_media
 from hilot.presentation.taskiq.transcriptions import reply_transcription
 from hilot.presentation.taskiq.watermarks import reply_watermark_check
 
@@ -67,7 +65,6 @@ class _InteractorProvider(Provider):
 
     interactors = provide_all(
         RequestDownload,
-        AwaitLinkPreview,
         DeliverMedia,
         RequestWatermarkCheck,
         ReplyWatermarkCheck,
@@ -136,7 +133,6 @@ async def run() -> None:
             container=container,
             config=schema.bot,
             tasks={
-                get_preview_wait_route(account_id): await_link_preview,
                 get_delivery_route(account_id): deliver_media,
                 get_watermark_reply_route(account_id): reply_watermark_check,
                 get_transcription_reply_route(account_id): reply_transcription,

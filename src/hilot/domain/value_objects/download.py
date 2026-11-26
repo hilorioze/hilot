@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import timedelta
 from enum import StrEnum
 from typing import ClassVar, Self
 
@@ -49,10 +48,6 @@ class Failure:
     @classmethod
     def from_bug(cls, link: Link) -> Self:
         return cls(link=link, reason=FailureReason.BUG, size=None)
-
-
-# how long after the message its links wait for the preview telegram builds
-LINK_PREVIEW_TIMEOUT: timedelta = timedelta(seconds=30)
 
 
 class DownloadTrigger(StrEnum):
@@ -114,13 +109,6 @@ class DownloadRequest:
             return info.can_fit(self.size_limit)
 
         return info.size <= self.size_limit
-
-
-# a message whose links wait for their preview, to know whether it plays the video
-@dataclass(frozen=True, slots=True, kw_only=True)
-class PreviewWait:
-    source: SourceMessage
-    links: list[Link]
 
 
 # a post whose media went out, with the first message holding it
