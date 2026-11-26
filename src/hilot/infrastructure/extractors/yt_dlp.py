@@ -181,9 +181,12 @@ class _YtDlpExtraction(Extraction):
             title=info.get("track") or info.get("title"),
             performer=info.get("artist") or info.get("uploader"),
             post=PostDetails(
+                url=info["webpage_url"],
                 title=info.get("title"),
                 description=info.get("description") or None,
                 author=info.get("channel") or info.get("uploader"),
+                # both lead to the author, youtube's uploader page by the handle and the channel one by the id
+                author_url=info.get("uploader_url") or info.get("channel_url"),
             ),
         )
 

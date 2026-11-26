@@ -40,7 +40,11 @@ from .models import (
 # the post of a file shares its table, where `title` is the title of an audio
 def _get_post(model: CachedFileModel | StoredFileModel) -> PostDetails:
     return PostDetails(
-        title=model.post_title, description=model.post_description, author=model.post_author
+        url=model.post_url,
+        title=model.post_title,
+        description=model.post_description,
+        author=model.post_author,
+        author_url=model.post_author_url,
     )
 
 
@@ -68,9 +72,11 @@ _ROW_RETORT: Retort = Retort(
         name_mapping(
             PostDetails,
             map={
+                "url": "post_url",
                 "title": "post_title",
                 "description": "post_description",
                 "author": "post_author",
+                "author_url": "post_author_url",
             },
         ),
         name_mapping(Cookie, skip=["value"]),

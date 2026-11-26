@@ -131,11 +131,11 @@ class _GalleryDlExtraction(Extraction):
             size=None,
             title=track.get("title") or file.kwdict.get("title"),
             performer=track.get("authorName"),
-            post=cls._create_post(file.kwdict),
+            post=cls._create_post(url=file.job.extractor.url, kwdict=file.kwdict),
         )
 
     @staticmethod
-    def _create_post(kwdict: dict[str, Any]) -> PostDetails:
+    def _create_post(*, url: str, kwdict: dict[str, Any]) -> PostDetails:
         # most sites describe the author with a dict, the others with a name
         author: dict[str, Any] = (
             {"name": kwdict["author"]}
@@ -145,6 +145,7 @@ class _GalleryDlExtraction(Extraction):
 
         # each site names the text and the author of a post its own way: instagram `description` and `fullname`, twitter `content` and the author's `nick`, tiktok `desc` and the author's `nickname`
         return PostDetails(
+            url=url,
             title=kwdict.get("title") or None,
             description=kwdict.get("description")
             or kwdict.get("content")
@@ -157,6 +158,8 @@ class _GalleryDlExtraction(Extraction):
             or author.get("uniqueId")
             or kwdict.get("username")
             or None,
+            # gallery-dl has no field for the page of an author on every site
+            author_url=None,
         )
 
     @staticmethod

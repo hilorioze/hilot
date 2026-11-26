@@ -27,6 +27,8 @@ class CachedFileModel(Base):
     chat_id: Mapped[int]
     message_id: Mapped[int]
 
+    post_url: Mapped[str | None]
     post_title: Mapped[str | None]
     post_description: Mapped[str | None]
     post_author: Mapped[str | None]
+    post_author_url: Mapped[str | None]

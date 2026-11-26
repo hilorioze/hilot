@@ -71,9 +71,13 @@ class MediaInfo:
 # what the site tells about the post of a media, as much as it has
 @dataclass(frozen=True, slots=True, kw_only=True)
 class PostDetails:
+    url: str | None
+
     title: str | None
     description: str | None
+
     author: str | None
+    author_url: str | None
 
 
 # what goes out to the chat with each file

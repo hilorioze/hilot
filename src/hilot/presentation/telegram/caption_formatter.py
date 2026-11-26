@@ -4,7 +4,7 @@ from typing import ClassVar, override
 from hilot.domain.interfaces.adapters.caption_formatter import CaptionFormatter
 from hilot.domain.interfaces.adapters.text_measurer import TextMeasurer
 from hilot.domain.value_objects.media import PostDetails
-from hilot.domain.value_objects.text import RichText, TextStyle
+from hilot.domain.value_objects.text import RichText, TextPart, TextStyle
 
 
 class ChatCaptionFormatter(CaptionFormatter):
@@ -17,11 +17,26 @@ class ChatCaptionFormatter(CaptionFormatter):
     def format_caption(self, *, post: PostDetails, limit: int | None) -> RichText | None:
         heading: list[RichText] = [
             *(
-                (RichText.styled(post.title, style=TextStyle.BOLD),)
+                (
+                    RichText(
+                        (
+                            TextPart(
+                                text=post.title, url=post.url, styles=frozenset({TextStyle.BOLD})
+                            ),
+                        )
+                    ),
+                )
                 if post.title and not self._repeats_description(post)
                 else ()
             ),
-            *((RichText.plain(f"by {post.author}"),) if post.author else ()),
+            *(
+                (
+                    RichText.plain("by ")
+                    + RichText((TextPart(text=post.author, url=post.author_url),)),
+                )
+                if post.author
+                else ()
+            ),
         ]
         # telegram strips the trailing whitespace of a text and drops an entity reaching into it
         description: str = (post.description or "").strip()
