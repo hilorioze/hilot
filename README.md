@@ -6,7 +6,7 @@ A multi-functional Telegram userbot.
 
 - **Downloads**: media from the links in outgoing and private messages, and from `.dl` / `.download`, with the title, author and description of the post
 - **SynthID check**: `.synth` / `.synthid` checks a photo, video or audio, or the media of a link, for a [SynthID](https://synthid.com/) watermark
-- **Transcription**: voice messages in private chats, and `.stt` on any voice, audio or video, transcribed with Whisper on [Groq](https://groq.com/)
+- **Transcription**: voice messages and video notes in private chats, and `.stt` on any voice, audio or video, transcribed with Whisper on [Groq](https://groq.com/)
 
 The commands work in any chat, on the message they reply to or the one they're sent with.
 
