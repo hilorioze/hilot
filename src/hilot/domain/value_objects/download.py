@@ -141,7 +141,6 @@ class DownloadResult:
         return (
             source.is_outgoing
             and not source.has_media
-            and self.request.reply_to == source.message_id
             and len(self.media) == 1
             and not self.failures
         )
