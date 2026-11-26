@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import ARRAY, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,3 +16,6 @@ class DeliveredPartModel(Base):
     part: Mapped[int] = mapped_column(primary_key=True)
 
     message_ids: Mapped[list[int]] = mapped_column(ARRAY(BigInteger))
+
+    delivered_at: Mapped[datetime]
+    expires_at: Mapped[datetime] = mapped_column(index=True)

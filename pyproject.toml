@@ -35,6 +35,7 @@ dependencies = [
 [project.scripts]
 # keep-sorted start
 hilot-bot = "hilot.main.bot:main"
+hilot-cleanup = "hilot.main.cleanup:main"
 hilot-cookies = "hilot.main.cookies:main"
 hilot-detector = "hilot.main.detector:main"
 hilot-downloader = "hilot.main.downloader:main"

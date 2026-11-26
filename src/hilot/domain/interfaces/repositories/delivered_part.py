@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Protocol
 
 from hilot.domain.entities.delivered_part import DeliveredPart
@@ -8,3 +9,5 @@ class DeliveredPartRepository(Protocol):
     async def get_all(self, source: SourceMessage) -> list[DeliveredPart]: ...
 
     async def add(self, delivered_part: DeliveredPart) -> None: ...
+
+    async def delete_expired(self, now: datetime) -> None: ...

@@ -14,6 +14,7 @@ from .config.loader import load_config
 from .config.nats import NATSConfig
 from .config.s3 import S3Config
 from .config.schemas import DownloaderSchema
+from .config.stored_file import StoredFileConfig
 from .config.worker import DownloaderConfig
 from .di.cookies import CookiesProvider
 from .di.database import DatabaseProvider
@@ -21,7 +22,8 @@ from .di.encryption import EncryptionProvider
 from .di.extractors import MediaExtractorProvider
 from .di.media import DiskSpaceProvider, FfmpegProvider, WorkspaceProvider
 from .di.queue import QueueProvider
-from .di.s3 import S3Provider, StoredFileProvider
+from .di.s3 import S3Provider
+from .di.stored_file import StoredFileProvider
 from .worker import configure_logging, run_worker
 
 
@@ -50,6 +52,7 @@ async def run() -> None:
             DatabaseConfig: schema.database,
             EncryptionConfig: schema.encryption,
             S3Config: schema.s3,
+            StoredFileConfig: schema.stored_file,
             NATSConfig: schema.nats,
             Route: DOWNLOAD_ROUTE,
             DownloaderConfig: schema.downloader,

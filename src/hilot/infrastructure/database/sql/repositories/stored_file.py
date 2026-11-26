@@ -1,7 +1,7 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from typing import override
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hilot.domain.entities.stored_file import StoredFile
@@ -26,8 +26,7 @@ class SQLStoredFileRepository(StoredFileRepository):
             select(StoredFileModel).where(
                 StoredFileModel.extractor == media_key.extractor,
                 StoredFileModel.media_id == media_key.media_id,
-                # `reuse_period` ends before the file storage expires the file
-                StoredFileModel.stored_at > func.now() - self._reuse_period,
+                StoredFileModel.expires_at > func.now(),
             )
         )
 
@@ -41,5 +40,14 @@ class SQLStoredFileRepository(StoredFileRepository):
         await upsert(
             session=self._session,
             model=StoredFileModel,
-            rows=[convert_stored_file_entity_to_row(stored_file)],
+            rows=[
+                convert_stored_file_entity_to_row(stored_file)
+                | {"expires_at": datetime.now(UTC) + self._reuse_period}
+            ],
+        )
+
+    @override
+    async def delete_expired(self, now: datetime) -> None:
+        await self._session.execute(
+            delete(StoredFileModel).where(StoredFileModel.expires_at <= now)
         )

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import timedelta
 
 from dature.fields.secret_str import SecretStr
 
@@ -10,9 +9,6 @@ class S3Config:
     region: str
 
     bucket: str
-
-    # how long a stored file is reused by the other accounts; must be a bit shorter than the bucket keeps a file
-    reuse_period: timedelta
 
     access_key_id: str
     secret_access_key: SecretStr

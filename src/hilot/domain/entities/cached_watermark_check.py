@@ -17,8 +17,14 @@ class CachedWatermarkCheck:
     check: WatermarkCheck = field(compare=False)
     checked_at: datetime = field(compare=False)
 
+    # `None` for a verdict that never expires
+    def get_expiry(self) -> datetime | None:
+        if self.check.verdict == WatermarkVerdict.DETECTED:
+            return None
+
+        return self.checked_at + self._NOT_DETECTED_LIFETIME
+
     def is_fresh(self, now: datetime) -> bool:
-        return (
-            self.check.verdict == WatermarkVerdict.DETECTED
-            or now < self.checked_at + self._NOT_DETECTED_LIFETIME
-        )
+        expiry: datetime | None = self.get_expiry()
+
+        return expiry is None or now < expiry

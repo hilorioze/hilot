@@ -1,5 +1,7 @@
+from datetime import datetime
 from typing import override
 
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hilot.domain.entities.cached_watermark_check import CachedWatermarkCheck
@@ -38,4 +40,10 @@ class SQLCachedWatermarkCheckRepository(CachedWatermarkCheckRepository):
             session=self._session,
             model=CachedWatermarkCheckModel,
             rows=[convert_cached_watermark_check_entity_to_row(cached_watermark_check)],
+        )
+
+    @override
+    async def delete_expired(self, now: datetime) -> None:
+        await self._session.execute(
+            delete(CachedWatermarkCheckModel).where(CachedWatermarkCheckModel.expires_at <= now)
         )

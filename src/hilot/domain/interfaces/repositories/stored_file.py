@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Protocol
 
 from hilot.domain.entities.stored_file import StoredFile
@@ -8,3 +9,5 @@ class StoredFileRepository(Protocol):
     async def get(self, media_key: MediaKey) -> StoredFile | None: ...
 
     async def save(self, stored_file: StoredFile) -> None: ...
+
+    async def delete_expired(self, now: datetime) -> None: ...

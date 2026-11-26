@@ -35,6 +35,7 @@ region = "us-east-1"
 
 bucket = "hilot"
 
+[stored_file]
 # must be a bit shorter than the bucket keeps a file
 reuse_period = "12:00:00"
 

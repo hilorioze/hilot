@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from datetime import datetime
 from typing import Any
 
 from adaptix import P, Retort, dumper, name_mapping
@@ -75,6 +76,8 @@ _ROW_RETORT: Retort = Retort(
         name_mapping(Cookie, skip=["value"]),
         # sqlalchemy binds enum members by name, not by value
         dumper(MediaKind, lambda kind: kind),
+        # the driver takes a time as is
+        dumper(datetime, lambda moment: moment),
     ],
 )
 # a verdict goes into one json column as a whole
@@ -125,7 +128,7 @@ def convert_cached_file_entity_to_row(cached_file: CachedFile) -> dict[str, Any]
 
 
 def convert_delivered_part_entity_to_row(delivered_part: DeliveredPart) -> dict[str, Any]:
-    return _ROW_RETORT.dump(delivered_part)
+    return _ROW_RETORT.dump(delivered_part) | {"expires_at": delivered_part.get_expiry()}
 
 
 def convert_stored_file_entity_to_row(stored_file: StoredFile) -> dict[str, Any]:
@@ -154,6 +157,7 @@ def convert_cached_watermark_check_entity_to_row(
         "content_hash": cached_watermark_check.content_hash,
         "check": _JSON_RETORT.dump(cached_watermark_check.check),
         "checked_at": cached_watermark_check.checked_at,
+        "expires_at": cached_watermark_check.get_expiry(),
     }
 
 

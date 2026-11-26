@@ -6,7 +6,6 @@ from hilot.application.media.links import SupportedLinkFinder
 from hilot.domain.entities.cached_watermark_check import CachedWatermarkCheck
 from hilot.domain.entities.telegram_file_hash import TelegramFileHash
 from hilot.domain.interfaces.adapters.download_scheduler import DownloadScheduler
-from hilot.domain.interfaces.adapters.file_hasher import FileHasher
 from hilot.domain.interfaces.adapters.file_storage import FileStorage
 from hilot.domain.interfaces.adapters.messenger import (
     CommandAnswerer,
@@ -26,7 +25,7 @@ from hilot.domain.interfaces.repositories.cached_watermark_check import (
 from hilot.domain.interfaces.repositories.telegram_file_hash import TelegramFileHashRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
 from hilot.domain.value_objects.download import DownloadPurpose, DownloadRequest, DownloadTrigger
-from hilot.domain.value_objects.media import AttachedMedia, ContentHash, StorageKey
+from hilot.domain.value_objects.media import AttachedMedia, StorageKey
 from hilot.domain.value_objects.message import (
     AnswerEntry,
     AnswerKind,
@@ -70,7 +69,6 @@ class RequestWatermarkCheck:
         watermark_formatter: WatermarkFormatter,
         workspace: Workspace,
         file_storage: FileStorage,
-        file_hasher: FileHasher,
         telegram_file_hash_repository: TelegramFileHashRepository,
         cached_watermark_check_repository: CachedWatermarkCheckRepository,
         uow: UnitOfWork,
@@ -86,7 +84,6 @@ class RequestWatermarkCheck:
         self._watermark_formatter: WatermarkFormatter = watermark_formatter
         self._workspace: Workspace = workspace
         self._file_storage: FileStorage = file_storage
-        self._file_hasher: FileHasher = file_hasher
         self._telegram_file_hash_repository: TelegramFileHashRepository = (
             telegram_file_hash_repository
         )
@@ -197,19 +194,14 @@ class RequestWatermarkCheck:
     async def _store_media(self, *, label: MediaLabel, media: AttachedMedia) -> WatermarkTarget:
         async with self._workspace.create() as directory:
             path: Path = await self._media_reader.download_media(media=media, directory=directory)
-            content_hash: ContentHash = await self._file_hasher.hash_file(path)
             storage_key: StorageKey = await self._file_storage.upload(path)
-
-        async with self._uow:
-            await self._telegram_file_hash_repository.save(
-                TelegramFileHash(file_unique_id=media.file_unique_id, content_hash=content_hash)
-            )
 
         return WatermarkTarget(
             storage_key=storage_key,
             mime_type=media.mime_type,
             size=media.size,
             is_shared=False,
+            file_unique_id=media.file_unique_id,
             label=label,
         )
 

@@ -5,7 +5,7 @@ from itertools import groupby
 from typing import Self
 
 from .download import DownloadResult, Failure
-from .media import StorageKey, StoredMedia
+from .media import FileUniqueId, StorageKey, StoredMedia
 from .message import Link, SourceMessage
 
 
@@ -88,6 +88,9 @@ class WatermarkTarget:
     # the file of a link stays for the other downloads of its media until the file storage expires it, an attached one goes after its check
     is_shared: bool
 
+    # an attached file's verdict is kept under its telegram id too, a link's media has none
+    file_unique_id: FileUniqueId | None
+
     label: MediaLabel
 
 
@@ -126,6 +129,7 @@ class WatermarkCheckRequest:
                     mime_type=item.info.mime_type,
                     size=item.info.size,
                     is_shared=True,
+                    file_unique_id=None,
                     label=MediaLabel(
                         link=link if names_links else None,
                         position=position if len(media) > 1 else None,

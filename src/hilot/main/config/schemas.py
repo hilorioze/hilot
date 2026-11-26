@@ -9,6 +9,7 @@ from .groq import GroqConfig
 from .inline_bot import InlineBotConfig
 from .nats import NATSConfig
 from .s3 import S3Config
+from .stored_file import StoredFileConfig
 from .telegram import TelegramConfig
 from .worker import BotConfig, DetectorConfig, DownloaderConfig, WorkerConfig
 
@@ -29,6 +30,7 @@ class BotSchema:
 class DownloaderSchema:
     downloader: DownloaderConfig
     disk: DiskConfig
+    stored_file: StoredFileConfig
     encryption: EncryptionConfig
     database: DatabaseConfig
     nats: NATSConfig
@@ -39,6 +41,7 @@ class DownloaderSchema:
 class TranscoderSchema:
     transcoder: WorkerConfig
     disk: DiskConfig
+    stored_file: StoredFileConfig
     database: DatabaseConfig
     nats: NATSConfig
     s3: S3Config
@@ -65,6 +68,12 @@ class TranscriberSchema:
 class CookieImportSchema:
     encryption: EncryptionConfig
     database: DatabaseConfig
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class CleanupSchema:
+    database: DatabaseConfig
+    stored_file: StoredFileConfig
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

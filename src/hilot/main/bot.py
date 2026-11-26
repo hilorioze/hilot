@@ -49,7 +49,7 @@ from .di.formatters import FormatterProvider
 from .di.handlers import HandlerProvider
 from .di.http import RedirectReaderProvider
 from .di.inline_bot import InlineBotProvider
-from .di.media import FileHasherProvider, TelegramFileHashProvider, WorkspaceProvider
+from .di.media import TelegramFileHashProvider, WorkspaceProvider
 from .di.queue import QueueProvider
 from .di.s3 import S3Provider
 from .di.telegram import SessionProvider, TelegramProvider
@@ -93,7 +93,6 @@ async def run() -> None:
         RedirectReaderProvider(),
         DetectableMediaMatcherProvider(),
         WorkspaceProvider(),
-        FileHasherProvider(),
         TelegramFileHashProvider(),
         CachedWatermarkCheckProvider(),
         CachedTranscriptProvider(),

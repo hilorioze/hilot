@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import override
 
-from sqlalchemy import ScalarResult, insert, select
+from sqlalchemy import ScalarResult, delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from hilot.domain.entities.delivered_part import DeliveredPart
@@ -35,4 +36,10 @@ class SQLDeliveredPartRepository(DeliveredPartRepository):
             insert(DeliveredPartModel).values(
                 convert_delivered_part_entity_to_row(delivered_part)
             ),
+        )
+
+    @override
+    async def delete_expired(self, now: datetime) -> None:
+        await self._session.execute(
+            delete(DeliveredPartModel).where(DeliveredPartModel.expires_at <= now)
         )

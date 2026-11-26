@@ -6,6 +6,7 @@ from typing import ClassVar
 
 from hilot.domain.entities.cached_watermark_check import CachedWatermarkCheck
 from hilot.domain.entities.detection_account import DetectionAccount
+from hilot.domain.entities.telegram_file_hash import TelegramFileHash
 from hilot.domain.errors.watermark import (
     DetectionAccountRevokedError,
     DetectionQuotaExceededError,
@@ -23,8 +24,9 @@ from hilot.domain.interfaces.repositories.cached_watermark_check import (
     CachedWatermarkCheckRepository,
 )
 from hilot.domain.interfaces.repositories.detection_account import DetectionAccountRepository
+from hilot.domain.interfaces.repositories.telegram_file_hash import TelegramFileHashRepository
 from hilot.domain.interfaces.unit_of_work import UnitOfWork
-from hilot.domain.value_objects.media import ContentHash, MediaKind
+from hilot.domain.value_objects.media import ContentHash, FileUniqueId, MediaKind
 from hilot.domain.value_objects.watermark import (
     WatermarkCheck,
     WatermarkCheckRequest,
@@ -55,6 +57,7 @@ class CheckWatermark:
         media_matcher: DetectableMediaMatcher,
         account_repository: DetectionAccountRepository,
         cached_watermark_check_repository: CachedWatermarkCheckRepository,
+        telegram_file_hash_repository: TelegramFileHashRepository,
         uow: UnitOfWork,
         workspace: Workspace,
         file_storage: FileStorage,
@@ -66,6 +69,9 @@ class CheckWatermark:
         self._account_repository: DetectionAccountRepository = account_repository
         self._cached_watermark_check_repository: CachedWatermarkCheckRepository = (
             cached_watermark_check_repository
+        )
+        self._telegram_file_hash_repository: TelegramFileHashRepository = (
+            telegram_file_hash_repository
         )
         self._uow: UnitOfWork = uow
         self._workspace: Workspace = workspace
@@ -101,7 +107,9 @@ class CheckWatermark:
                 path: Path = directory / "media"
                 await self._file_storage.download(key=target.storage_key, path=path)
 
-                return await self._check_file(path=path, mime_type=target.mime_type)
+                return await self._check_file(
+                    path=path, mime_type=target.mime_type, file_unique_id=target.file_unique_id
+                )
         except DetectionQuotaExceededError as error:
             return WatermarkQuotaExceeded(retry_after=error.retry_after)
         finally:
@@ -109,7 +117,9 @@ class CheckWatermark:
                 await self._file_storage.delete(target.storage_key)
 
     # the same content, forwarded or sent again by a link, gets its verdict from before
-    async def _check_file(self, *, path: Path, mime_type: str) -> WatermarkCheck:
+    async def _check_file(
+        self, *, path: Path, mime_type: str, file_unique_id: FileUniqueId | None
+    ) -> WatermarkCheck:
         content_hash: ContentHash = await self._file_hasher.hash_file(path)
 
         async with self._uow:
@@ -117,25 +127,30 @@ class CheckWatermark:
                 CachedWatermarkCheck | None
             ) = await self._cached_watermark_check_repository.get(content_hash)
 
-        if cached_watermark_check is not None and cached_watermark_check.is_fresh(
+        if cached_watermark_check is None or not cached_watermark_check.is_fresh(
             datetime.now(UTC)
         ):
-            return cached_watermark_check.check
+            check: WatermarkCheck = await self._detect(path=path, mime_type=mime_type)
 
-        check: WatermarkCheck = await self._detect(path=path, mime_type=mime_type)
+            # an undetermined verdict is what improvements of the detector fix, so it isn't kept
+            if check.verdict == WatermarkVerdict.UNDETERMINED:
+                return check
 
-        # an undetermined verdict is what improvements of the detector fix, so it isn't kept
-        if check.verdict == WatermarkVerdict.UNDETERMINED:
-            return check
-
-        async with self._uow:
-            await self._cached_watermark_check_repository.save(
-                CachedWatermarkCheck(
-                    content_hash=content_hash, check=check, checked_at=datetime.now(UTC)
-                )
+            cached_watermark_check = CachedWatermarkCheck(
+                content_hash=content_hash, check=check, checked_at=datetime.now(UTC)
             )
 
-        return check
+            async with self._uow:
+                await self._cached_watermark_check_repository.save(cached_watermark_check)
+
+        # the bot finds the verdict of the same telegram file sent again without downloading it
+        if file_unique_id is not None:
+            async with self._uow:
+                await self._telegram_file_hash_repository.save(
+                    TelegramFileHash(file_unique_id=file_unique_id, content_hash=content_hash)
+                )
+
+        return cached_watermark_check.check
 
     async def _detect(self, *, path: Path, mime_type: str) -> WatermarkCheck:
         kind: MediaKind = self._media_matcher.get_kind(mime_type)

@@ -1,5 +1,6 @@
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from itertools import batched, groupby
 from pathlib import Path
 from typing import ClassVar
@@ -211,6 +212,7 @@ class DeliverMedia:
                         message_id=source.message_id,
                         part=part,
                         message_ids=sent.message_ids,
+                        delivered_at=datetime.now(UTC),
                     )
                 )
 

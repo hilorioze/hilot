@@ -13,10 +13,12 @@ from .config.loader import load_config
 from .config.nats import NATSConfig
 from .config.s3 import S3Config
 from .config.schemas import TranscoderSchema
+from .config.stored_file import StoredFileConfig
 from .di.database import DatabaseProvider
 from .di.media import DiskSpaceProvider, FfmpegProvider, WorkspaceProvider
 from .di.queue import QueueProvider
-from .di.s3 import S3Provider, StoredFileProvider
+from .di.s3 import S3Provider
+from .di.stored_file import StoredFileProvider
 from .worker import configure_logging, run_worker
 
 
@@ -41,6 +43,7 @@ async def run() -> None:
         context={
             DatabaseConfig: schema.database,
             S3Config: schema.s3,
+            StoredFileConfig: schema.stored_file,
             NATSConfig: schema.nats,
             Route: TRANSCODE_ROUTE,
             DiskConfig: schema.disk,

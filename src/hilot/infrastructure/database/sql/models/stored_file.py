@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from hilot.domain.value_objects.media import MediaKind
@@ -34,4 +33,5 @@ class StoredFileModel(Base):
     post_description: Mapped[str | None]
     post_author: Mapped[str | None]
 
-    stored_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # the other accounts reuse the file until then, a bit before the file storage expires it
+    expires_at: Mapped[datetime] = mapped_column(index=True)

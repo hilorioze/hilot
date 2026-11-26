@@ -19,6 +19,7 @@ The commands work in any chat, on the message they reply to or the one they're s
 - `hilot-transcriber`: transcribes the speech of the media with Whisper on Groq
 - `hilot-login`: logs in with a QR code, or with a phone number on the test backend, and prints the session string
 - `hilot-cookies <cookies.txt>`: stores the cookies of a logged in browser for the sites that need a login, replacing the stored cookies of the sites in the file; with `--whole-browser` the file holds the whole browser, so the sites missing from it lose their stored cookies too
+- `hilot-cleanup`: deletes the cached data that has expired, to run daily
 - `hilot-migrate`: [Alembic](https://alembic.sqlalchemy.org/) for the database, e.g. `hilot-migrate upgrade head`
 
 The commands share PostgreSQL, [NATS](https://nats.io/) with JetStream and an S3 bucket; there is one `hilot-bot` per Telegram account. The workers serve `/healthz` and Prometheus `/metrics` on their `http` address.
@@ -36,7 +37,7 @@ The commands share PostgreSQL, [NATS](https://nats.io/) with JetStream and an S3
 - `inline_bot.local_mode`: `api_url` is a [Bot API server](https://github.com/tdlib/telegram-bot-api) started with `--local`, which takes files of up to 2000 MB
 - `bot.max_message_age`: messages older than this that came in while `hilot-bot` was down are skipped
 - `bot.check_ins`: once a day, at a random moment between `start` and `end`, sends `command` to `bot` and presses `buttons` by their callback data; only on the accounts that have started the bot
-- `s3.reuse_period`: how long the other accounts send a stored file from the bucket instead of downloading it again
+- `stored_file.reuse_period`: how long the other accounts send a stored file from the bucket instead of downloading it again
 - `disk.min_free_space`: a download or a transcode that would leave less free waits for `disk.postpone_delay`
 - `detector.browser_url`: the DevTools address of a Chromium-based browser started apart from `hilot-detector`, with `--remote-debugging-port`; synthid.com attests the requests in a real page, which refuses a browser automated from its start, and the synthid.com accounts are signed in from its windows; signing out keeps an account, so they go one after another in the same window
 - `concurrency`: the number of tasks a worker runs at once
